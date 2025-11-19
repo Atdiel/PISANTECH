@@ -1,0 +1,23 @@
+# TODO LIST FOR KPI PURCHASE
+
+- [ ] Quitar registro de Solpeds borradas.
+- [x] Colocar refresh en la transacción
+- [ ] Revisar fechas de liberación.
+- [ ] Revisar funcionalidad de semáforos (Tabla).
+- [ ] Columna de "Importe" para descuentos. [ir]()
+- [ ] Añadir columna de Usuario creador (Ordenes de compra)
+- [ ] Campo de entradas parciales, mostrar entrega restante [ir](https://github.com/Atdiel/PISANTECH/new/main#campo-entradas-parciales).
+- [ ] Funcionalidad solo en base a días hábiles.
+
+### Descuentos
+- En la tabla **EKKO** buscar por campo **EBELN** (_purchase order_)
+- Tomar campo **KNUMV** (_numero de condición_)
+- Ir a tabla **EKPO** (_purchasing doc item_) buscando por **EBELN** y tomamos las posiciones que tiene el doc
+- Buscar en la tabla **PRCD_ELEMENTS** (_pricing elements_) por campo **KNUMV** Y **PRCD_ELEMENTS**-**KPOSN** = **EKPO**-**EBELP**
+
+### Campo entradas parciales
+- En tabla **EKBE** buscar por campo **EBELN** (_purchase order_)
+- Si el campo **VGABE** = **9** (**_es un servicio_**)
+- Ir a la tabla **ESLH** buscar con el campo **EBELN** (_purchase order_)
+- Tomar campo **PACKNO** de **ESLH** y usarlo para buscar en **ESLL** donde **ESLH**-**PACKNO** = **ESLL**-**PACKNO**
+- Tomar el campo **ESLL**-**MENGE** (__es el valor entregado real__)
