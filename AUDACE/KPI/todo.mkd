@@ -1,6 +1,6 @@
 # TODO LIST FOR KPI PURCHASE
 
-- [ ] Quitar registro de Solpeds borradas.
+- [x] Quitar registro de Solpeds borradas.
 - [x] Colocar refresh en la transacción
 - [ ] Revisar fechas de liberación.
 - [ ] Revisar funcionalidad de semáforos (Tabla).
@@ -8,6 +8,10 @@
 - [ ] Añadir columna de Usuario creador (Ordenes de compra)
 - [ ] Campo de entradas parciales, mostrar entrega restante [ir](https://github.com/Atdiel/PISANTECH/new/main#campo-entradas-parciales).
 - [ ] Funcionalidad solo en base a días hábiles.
+
+
+### Solpeds borradas
+- Al solicitar solpeds de la tabla **EBAN** si el campo **LOEKZ** esta marcado con 'X' **_no traer ese registro_**
 
 ### Descuentos
 - En la tabla **EKKO** buscar por campo **EBELN** (_purchase order_)
