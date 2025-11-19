@@ -34,6 +34,8 @@ FORM read_report_records .
   SELECT * FROM eban
     INTO TABLE solicitudes_de_pedido
     WHERE
+*** MODIF. - 761 - 19/11/2025 - PTECHABAP01
+      loekz = abap_false AND "Indicador de borrado
       badat IN s_fech AND
       ekgrp IN s_grpc.
 
