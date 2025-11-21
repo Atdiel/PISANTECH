@@ -151,6 +151,12 @@ FORM get_sale_documents_detail .
         FOR ALL ENTRIES IN  it_objectid
         WHERE objectclas = 'BANF'
         AND   objectid = it_objectid-objid2
+*** INICIO MODIF. - 761 - 19/11/2025 - PTECHABAP01
+        AND   changenr  = ( SELECT MAX( changenr ) FROM cdpos
+                              WHERE objectclas  = 'BANF' AND
+                                    objectid    = it_objectid-objid2 AND
+                                    fname       = 'FRGKZ' AND value_new = 'Y')
+*** FIN MODIF.    - 761 - 19/11/2025 - PTECHABAP01
         AND   fname   = 'FRGKZ'
         AND   value_new = 'Y'.
 
@@ -472,6 +478,11 @@ FORM get_fechas.
 
 * Existen datos?
     IF sy-subrc = 0.
+*** INICIO MODIF. - 761 - 20/11/2025 - PTECHABAP01
+      IF wa_solpeds-frgst IS INITIAL.
+        wa_nuevas_alv-udate = text-001.
+      ENDIF.
+*** FIN MODIF.    - 761 - 20/11/2025 - PTECHABAP01
       wa_nuevas_alv-bkgrp = wa_solpeds-ekgrp.
     ENDIF.
 
@@ -731,6 +742,8 @@ FORM get_desc_material .
   READ TABLE documentos_de_compra INTO DATA(compra) WITH KEY ekpo-ebelp = wa_nuevas_alv-pos
                                                              ekpo-ebeln = wa_nuevas_alv-ebeln.
   IF sy-subrc = 0.
+*** MODIF. - 761 - 19/11/2025 - PTECHABAP01
+    wa_nuevas_alv-ernam   = compra-ekko-ernam.
     wa_nuevas_alv-matnr  = compra-ekpo-matnr.
     wa_nuevas_alv-txz01  = compra-ekpo-txz01.
 
