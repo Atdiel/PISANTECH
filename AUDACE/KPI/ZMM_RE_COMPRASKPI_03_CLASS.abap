@@ -599,10 +599,12 @@ FORM get_val_day_status .
       WHEN 'DÍAS DE LIBERACIÓN SOLPED'.
         READ TABLE it_val_d INTO wa_val_d WITH KEY descripcion = wa_rg_day-desc.
         IF sy-subrc = 0.
-          IF wa_rg_day-dias < wa_val_d-dias AND wa_rg_day-dias < 0.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+          IF wa_rg_day-dias >= wa_val_d-dias.
             wa_nuevas_alv-smf1  = '@0A@'.
             wa_nuevas_alv-smfr1 = 0.
-          ELSEIF wa_rg_day-dias = 0 OR wa_rg_day-dias >= wa_val_d-dias.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+          ELSEIF wa_rg_day-dias < wa_val_d-dias.
             wa_nuevas_alv-smf1  = '@08@'.
             wa_nuevas_alv-smfr1 = 1.
           ENDIF.
@@ -610,10 +612,12 @@ FORM get_val_day_status .
       WHEN 'DÍAS DE CREACIÓN ORD. COMPRAS'.
         READ TABLE it_val_d INTO wa_val_d WITH KEY descripcion = wa_rg_day-desc.
         IF sy-subrc = 0.
-          IF wa_rg_day-dias < wa_val_d-dias AND wa_rg_day-dias < 0.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+          IF wa_rg_day-dias >= wa_val_d-dias.
             wa_nuevas_alv-smf2  = '@0A@'.
             wa_nuevas_alv-smfr2 = 0.
-          ELSEIF wa_rg_day-dias = 0 OR wa_rg_day-dias >= wa_val_d-dias.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+          ELSEIF wa_rg_day-dias < wa_val_d-dias.
             wa_nuevas_alv-smf2  = '@08@'.
             wa_nuevas_alv-smfr2 = 1.
           ENDIF.
@@ -622,10 +626,12 @@ FORM get_val_day_status .
       WHEN 'DÍAS DOCUMENTOS DE COMPRAS'.
         READ TABLE it_val_d INTO wa_val_d WITH KEY descripcion = wa_rg_day-desc.
         IF sy-subrc = 0.
-          IF wa_rg_day-dias < wa_val_d-dias AND wa_rg_day-dias < 0.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+          IF wa_rg_day-dias >= wa_val_d-dias.
             wa_nuevas_alv-smf4  = '@0A@'.
             wa_nuevas_alv-smfr4 = 0.
-          ELSEIF wa_rg_day-dias = 0 OR wa_rg_day-dias >= wa_val_d-dias.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+          ELSEIF wa_rg_day-dias < wa_val_d-dias.
             wa_nuevas_alv-smf4  = '@08@'.
             wa_nuevas_alv-smfr4 = 1.
           ENDIF.
@@ -703,11 +709,15 @@ FORM read_fec_it .
   ENDIF.
 
 *asignacion de fecha a it_data
-  wa_nuevas_alv-eindt1 = budat - wa_nuevas_alv-eindt.
-  wa_nuevas_alv-v_trans = udate - ebdat.
+*** INICIO MODIF. - 761 - 20/11/2025 - PTECHABAP01
+  PERFORM f_get_working_days USING budat wa_nuevas_alv-eindt CHANGING wa_nuevas_alv-eindt1.
+  PERFORM f_get_working_days USING udate ebdat CHANGING wa_nuevas_alv-v_trans.
+
+*** FIN MODIF.    - 761 - 20/11/2025 - PTECHABAP01
 
   IF wa_nuevas_alv-badat IS NOT INITIAL AND udate IS NOT INITIAL.
-    wa_nuevas_alv-result = wa_nuevas_alv-badat - udate.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+    PERFORM f_get_working_days USING wa_nuevas_alv-badat udate CHANGING wa_nuevas_alv-result.
   ELSE.
     wa_nuevas_alv-result = 0.
   ENDIF.
@@ -786,4 +796,76 @@ FORM get_desc_conpag .
   IF sy-subrc = 0.
     wa_nuevas_alv-text1 = wa_052u-text1.
   ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_get_working_days
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> FECHA_INI
+*&      --> FECHA_FIN
+*&      <-- DIAS_HABILES
+*&---------------------------------------------------------------------*
+FORM f_get_working_days  USING    p_fecha_ini
+                                  p_fecha_fin
+                         CHANGING p_dias_habiles.
+
+  DATA: lv_datediff   TYPE p,
+        lv_feriado    TYPE i.
+
+  DATA: lv_fecha_ent  TYPE sy-datum,
+        lv_fecha_sal  TYPE sy-datum.
+
+  IF p_fecha_ini > p_fecha_fin.
+    EXIT.
+  ENDIF.
+
+  CLEAR: lv_datediff, lv_feriado, lv_fecha_ent, lv_fecha_sal.
+
+  lv_fecha_ent = p_fecha_ini.
+
+  CALL FUNCTION 'SD_DATETIME_DIFFERENCE'
+    EXPORTING
+      date1            = p_fecha_ini
+      time1            = sy-uzeit
+      date2            = p_fecha_fin
+      time2            = sy-uzeit
+    IMPORTING
+      datediff         = lv_datediff
+    EXCEPTIONS
+      invalid_datetime = 1
+      OTHERS           = 2.
+
+  lv_datediff   = lv_datediff.  " Incluimos la ultima fecha
+
+  DO lv_datediff TIMES.
+
+    CLEAR: lv_fecha_sal.
+
+    lv_fecha_ent = lv_fecha_ent + 1.
+
+    CALL FUNCTION 'DATE_CONVERT_TO_FACTORYDATE'
+      EXPORTING
+        correct_option               = '+'
+        date                         = lv_fecha_ent
+        factory_calendar_id          = 'CL'
+      IMPORTING
+        date                         = lv_fecha_sal
+      EXCEPTIONS
+        calendar_buffer_not_loadable = 1
+        correct_option_invalid       = 2
+        date_after_range             = 3
+        date_before_range            = 4
+        date_invalid                 = 5
+        factory_calendar_not_found   = 6
+        OTHERS                       = 7.
+
+    IF lv_fecha_ent NE lv_fecha_sal.
+      lv_feriado = lv_feriado + 1.
+    ENDIF.
+
+  ENDDO.
+
+   p_dias_habiles    = lv_datediff - lv_feriado.
+
 ENDFORM.
