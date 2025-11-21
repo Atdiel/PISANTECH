@@ -34,6 +34,7 @@
 - Tomar campo **KNUMV** (_numero de condición_)
 - Ir a tabla **EKPO** (_purchasing doc item_) buscando por **EBELN** y tomamos las posiciones que tiene el doc
 - Buscar en la tabla **PRCD_ELEMENTS** (_pricing elements_) por campo **KNUMV** Y **PRCD_ELEMENTS**-**KPOSN** = **EKPO**-**EBELP**
+- Tomar el campo **PRCD_ELEMENTS**-**KWERT** pero solo si es negativo, este sera el descuento
 
 ### Campo entradas parciales
 #### Para materiales:
