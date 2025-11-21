@@ -2,7 +2,7 @@
 
 - [x] [Quitar registro de Solpeds borradas.](#solpeds-borradas)
 - [x] Colocar refresh en la transacción
-- [ ] [Revisar fechas de liberación.](#revisar-fechas-de-liberación).
+- [X] [Revisar fechas de liberación.](#revisar-fechas-de-liberación).
 - [ ] [Revisar funcionalidad de semáforos (Tabla).](#funcionalidad-semaforos)
 - [ ] [Columna de "Importe" para descuentos.](#Descuentos)
 - [X] Añadir columna de Usuario creador (Ordenes de compra)
