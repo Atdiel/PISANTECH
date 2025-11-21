@@ -1,6 +1,8 @@
 *&---------------------------------------------------------------------*
 *& Include          ZMM_RE_COMPRASKPI_03_TOP
 *&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION DEFERRED.
+ DATA: go_event_handler TYPE REF TO lcl_event_handler.
 
  DATA: ok_code TYPE sy-ucomm.
 
