@@ -1,3 +1,26 @@
+*** INICIO MODIF. - 761 - 20/11/2025 - PTECHABAP01
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    METHODS: handle_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid
+      IMPORTING e_row_id e_column_id.
+ENDCLASS.
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD handle_hotspot_click.
+
+    CASE e_column_id.
+      WHEN 'BANFN'.
+        READ TABLE it_data INTO DATA(ls_data) INDEX e_row_id-index.
+        IF sy-subrc = 0.
+          "LLAMAMOS A LA TRANSACCION
+          SET PARAMETER ID 'BAN' FIELD ls_data-banfn.
+          CALL TRANSACTION 'ME53N' AND SKIP FIRST SCREEN.
+        ENDIF.
+    ENDCASE.
+
+  ENDMETHOD.
+ENDCLASS.
+*** FIN MODIF.    - 761 - 20/11/2025 - PTECHABAP01
 FORM display_alv_on_screen .
   DATA: it_sort TYPE TABLE OF lvc_s_sort,
         wa_sort TYPE         lvc_s_sort.
@@ -26,6 +49,12 @@ FORM display_alv_on_screen .
       it_fieldcatalog = it_fcam
       it_outtab       = it_data
       it_sort         =  it_sort ).
+
+*** INICIO MODIF. - 761 - 20/11/2025 - PTECHABAP01
+  go_event_handler = NEW lcl_event_handler( ).
+
+  SET HANDLER go_event_handler->handle_hotspot_click FOR obj_alv_grid.
+*** FIN MODIF.    - 761 - 20/11/2025 - PTECHABAP01
 
 ENDFORM.
 
@@ -403,7 +432,7 @@ FORM created_catalog .
   it_fcam = VALUE #(
 
      ( tabname = 'IT_DATA' fieldname = 'WERKS'     scrtext_l = 'Centro' no_out = 'X')
-     ( tabname = 'IT_DATA' fieldname = 'BANFN'     scrtext_l = 'Solicitud de pedido' )
+     ( tabname = 'IT_DATA' fieldname = 'BANFN'     scrtext_l = 'Solicitud de pedido' hotspot = 'X' )
 
      ( tabname = 'IT_DATA' fieldname = 'BADAT'     scrtext_l = 'Fecha solped.' )
      ( tabname = 'IT_DATA' fieldname = 'RESULT'    scrtext_l = 'Dias Transcurridos.' )
@@ -480,7 +509,7 @@ FORM get_fechas.
     IF sy-subrc = 0.
 *** INICIO MODIF. - 761 - 20/11/2025 - PTECHABAP01
       IF wa_solpeds-frgst IS INITIAL.
-        wa_nuevas_alv-udate = text-001.
+        wa_nuevas_alv-udate = TEXT-001.
       ENDIF.
 *** FIN MODIF.    - 761 - 20/11/2025 - PTECHABAP01
       wa_nuevas_alv-bkgrp = wa_solpeds-ekgrp.
@@ -810,11 +839,11 @@ FORM f_get_working_days  USING    p_fecha_ini
                                   p_fecha_fin
                          CHANGING p_dias_habiles.
 
-  DATA: lv_datediff   TYPE p,
-        lv_feriado    TYPE i.
+  DATA: lv_datediff TYPE p,
+        lv_feriado  TYPE i.
 
-  DATA: lv_fecha_ent  TYPE sy-datum,
-        lv_fecha_sal  TYPE sy-datum.
+  DATA: lv_fecha_ent TYPE sy-datum,
+        lv_fecha_sal TYPE sy-datum.
 
   IF p_fecha_ini > p_fecha_fin.
     EXIT.
@@ -866,6 +895,6 @@ FORM f_get_working_days  USING    p_fecha_ini
 
   ENDDO.
 
-   p_dias_habiles    = lv_datediff - lv_feriado.
+  p_dias_habiles    = lv_datediff - lv_feriado.
 
 ENDFORM.
