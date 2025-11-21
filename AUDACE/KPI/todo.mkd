@@ -8,7 +8,7 @@
 - [X] Añadir columna de Usuario creador (Ordenes de compra)
 - [ ] [Campo de entradas parciales, mostrar entrega restante.](#campo-entradas-parciales).
 - [X] Funcionalidad solo en base a días hábiles.
-- [ ] [Al dar doble click sobre la solped abrir directamente otra ventana.](#hotspot-para-solped)
+- [X] [Al dar doble click sobre la solped abrir directamente otra ventana.](#hotspot-para-solped)
 
 ### Solpeds borradas
 - Al solicitar solpeds de la tabla **EBAN** si el campo **LOEKZ** esta marcado con 'X' **_no traer ese registro_**
