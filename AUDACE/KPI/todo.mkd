@@ -38,13 +38,15 @@
 
 ### Campo entradas parciales
 #### Para materiales:
-- En la tabla **EKBE** 
+- En la tabla **EKBE** buscar por campo **EBELN** Y **BWART** = (101, 102)
+- Siendo el 101 una suma y el 102 una resta para entregas del material
+- Validar contra la solicitud en la **EKPO** para saber el restante del material
 
 #### Para Servicios:
 - En tabla **EKBE** buscar por campo **EBELN** (_purchase order_)
 - Si el campo **VGABE** = **9** (**_es un servicio_**)
-- Ir a la tabla **ESLH** buscar con el campo **EBELN** (_purchase order_)
-- Tomar campo **PACKNO** de **ESLH** y usarlo para buscar en **ESLL** donde **ESLH**-**PACKNO** = **ESLL**-**PACKNO**
+- Ir a la tabla **ESLH** buscar con el campo **ESLH**-**EBELN** = **EKBE**-**BELNR** __(material document)__
+- Tomar campo **PACKNO** de **ESLH** usando (**MAX**) para tomar el mas reciente y usarlo para buscar en **ESLL** donde **ESLH**-**PACKNO** = **ESLL**-**PACKNO**
 - Tomar el campo **ESLL**-**MENGE** (__es el valor entregado real__)
 
 #### Hotspot para **SOLPED**
