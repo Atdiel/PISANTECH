@@ -29,12 +29,18 @@
 - En el campo **PRECIO DESCUENTO** cambiar la descripción y mostrar **MONTO DESCUENTO** y visualizar el importe total de descuento
 - En el campo **PORCENTAJE DESCUENTO** mostrar el % del descuento
 
-#### Proceso para obtener el descuento
+#### Materiales
 - En la tabla **EKKO** buscar por campo **EBELN** (_purchase order_)
 - Tomar campo **KNUMV** (_numero de condición_)
 - Ir a tabla **EKPO** (_purchasing doc item_) buscando por **EBELN** y tomamos las posiciones que tiene el doc
 - Buscar en la tabla **PRCD_ELEMENTS** (_pricing elements_) por campo **KNUMV** Y **PRCD_ELEMENTS**-**KPOSN** = **EKPO**-**EBELP**
 - Tomar el campo **PRCD_ELEMENTS**-**KWERT** pero solo si es negativo, este sera el descuento
+
+#### Servicios
+- Si en la **EKPO** el campo **MATNR** no tiene valor, entonces se considera como servicio
+- Ir a la **ESLH** buscando por campo **ESLH**-**EBELN** = **EKPO**-**EBELN** y **ESLH**-**EBELP** = **EKPO**-**EBELP
+- Tomando el valor __max__ en el campo **ESLH**-**PACKNO**
+- Usar el campo **ESLH**-**KNUMV** = **PRCD_ELEMENTS**-**KNUMV** y tomamos el valor negativo en **PRCD_ELEMENTS**-**KWERT**
 
 ### Campo entradas parciales
 #### Para materiales:
