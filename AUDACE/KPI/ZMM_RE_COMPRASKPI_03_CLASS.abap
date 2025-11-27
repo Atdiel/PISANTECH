@@ -7,15 +7,19 @@ ENDCLASS.
 CLASS lcl_event_handler IMPLEMENTATION.
 
   METHOD handle_hotspot_click.
+    READ TABLE it_data INTO DATA(ls_data) INDEX e_row_id-index.
 
     CASE e_column_id.
       WHEN 'BANFN'.
-        READ TABLE it_data INTO DATA(ls_data) INDEX e_row_id-index.
         IF sy-subrc = 0.
           "LLAMAMOS A LA TRANSACCION
           SET PARAMETER ID 'BAN' FIELD ls_data-banfn.
           CALL TRANSACTION 'ME53N' AND SKIP FIRST SCREEN.
         ENDIF.
+
+      WHEN 'EBELN'.
+        SET PARAMETER ID 'BES' FIELD ls_data-ebeln.
+        CALL TRANSACTION 'ME23N' AND SKIP FIRST SCREEN.
     ENDCASE.
 
   ENDMETHOD.
@@ -133,6 +137,67 @@ FORM get_sales_documents USING sales_docs TYPE sales_documents.
       WHERE knumv = documentos_de_compra-ekko-knumv
         AND ( kschl = 'R001' OR kschl = 'R002' OR
               kschl = 'R003' OR kschl = 'PBXX' ).
+
+*** INICIO MODIF. - 761 - 25/11/2025 - PTECHABAP01
+
+    REFRESH:  gt_deliveried, gt_hist_serv.
+    CLEAR gs_deliveried.
+
+    SELECT ebeln ebelp belnr buzei FROM ekbe
+      INTO TABLE gt_hist_serv
+      FOR ALL ENTRIES IN documentos_de_compra
+      WHERE
+        ebeln     = documentos_de_compra-ekko-ebeln AND
+        ebelp     = documentos_de_compra-ekpo-ebelp AND
+        vgabe     = 9.
+
+    IF sy-subrc = 0.
+      "Ejecutar el proceso para validar pendientes
+      SELECT a~ebeln, a~ebelp, b~menge FROM eslh AS a INNER JOIN
+        esll AS b ON a~packno = b~packno
+        INTO TABLE @DATA(lt_cant_serv)
+        FOR ALL ENTRIES IN @gt_hist_serv
+        WHERE
+          a~packno = ( SELECT MAX( packno ) FROM eslh WHERE ebeln = @gt_hist_serv-belnr AND
+                                ebelp = @gt_hist_serv-buzei ) AND
+          a~ebeln = @gt_hist_serv-belnr AND
+          a~ebelp = @gt_hist_serv-buzei.
+
+      LOOP AT gt_hist_serv INTO DATA(ls_hist_serv).
+        LOOP AT lt_cant_serv INTO DATA(ls_cant_serv) WHERE ebeln = ls_hist_serv-belnr AND ebelp = ls_hist_serv-buzei.
+          gs_deliveried = VALUE #( ebeln = ls_hist_serv-ebeln ebelp = ls_hist_serv-ebelp
+                      menge = ls_cant_serv-menge ).
+          COLLECT gs_deliveried INTO gt_deliveried.
+        ENDLOOP.
+      ENDLOOP.
+    ENDIF.
+
+    SELECT * FROM ekbe
+      INTO TABLE @DATA(lt_hist_mat)
+      FOR ALL ENTRIES IN @documentos_de_compra
+      WHERE
+        ebeln     = @documentos_de_compra-ekko-ebeln AND
+        ebelp     = @documentos_de_compra-ekpo-ebelp AND
+        bwart     IN ('101', '102'). "Movimiento entrada y salida
+
+    IF sy-subrc = 0.
+      LOOP AT lt_hist_mat INTO DATA(ls_hist_mat).
+        "Validamos si la posicion de la oc es un servicio, se elimina el registro 101 de nuestra itab
+        READ TABLE gt_hist_serv WITH KEY ebeln = ls_hist_mat-ebeln
+                                          ebelp = ls_hist_mat-ebelp TRANSPORTING NO FIELDS.
+        IF sy-subrc <> 0.
+          gs_deliveried = VALUE #( ebeln = ls_hist_serv-belnr ebelp = ls_hist_serv-buzei
+                      menge = COND #( WHEN ls_hist_mat-bwart = '101'
+                                        THEN ls_cant_serv-menge
+                                      ELSE
+                                        ls_cant_serv-menge * ( -1 ) ) ).
+          COLLECT gs_deliveried INTO gt_deliveried.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+
+*** FIN MODIF.    - 761 - 25/11/2025 - PTECHABAP01
+
   ENDIF.
 
 *  SORT documentos_de_compra BY ekko-ebeln.
@@ -166,7 +231,8 @@ FORM get_sale_documents_detail .
 
   REFRESH:  hora_documentos_compra, proveedores, grupos_de_compra.
 
-  it_objectid =  VALUE #( FOR id IN documentos_de_compra ( objid = id-ekko-ebeln objid2 = id-ekpo-banfn ) ).
+*** MODIF. - 761 - 21/11/2025 - PTECHABAP01
+  it_objectid = VALUE #( FOR id IN solicitudes_de_pedido ( objid2 = id-banfn ) ).
 
   SORT it_objectid BY objid objid2.
   DELETE ADJACENT DUPLICATES FROM it_objectid.
@@ -372,6 +438,9 @@ FORM append_lines_to_alv USING documents TYPE sales_documents.
           budat1    = VALUE #( it_mkpf[ mblnr = record-belnr ]-budat OPTIONAL )
           eindt     = VALUE #( it_eket[ ebeln = record-ebeln ]-eindt OPTIONAL )
 
+          ctd_pend  = VALUE #( documentos_de_compra[ ekpo-ebeln = record-ebeln ekpo-ebelp = record-ebelp ]-ekpo-menge OPTIONAL )
+                      - VALUE #( gt_deliveried[ ebeln = record-ebeln ebelp = record-ebelp ]-menge OPTIONAL )
+
           pos       = COND #( WHEN record-ebelp IS NOT INITIAL
                         THEN VALUE #( documentos_de_compra[ ekpo-ebelp = record-ebelp ]-ekpo-ebelp OPTIONAL ) )
 
@@ -432,14 +501,17 @@ FORM created_catalog .
   it_fcam = VALUE #(
 
      ( tabname = 'IT_DATA' fieldname = 'WERKS'     scrtext_l = 'Centro' no_out = 'X')
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
      ( tabname = 'IT_DATA' fieldname = 'BANFN'     scrtext_l = 'Solicitud de pedido' hotspot = 'X' )
 
      ( tabname = 'IT_DATA' fieldname = 'BADAT'     scrtext_l = 'Fecha solped.' )
      ( tabname = 'IT_DATA' fieldname = 'RESULT'    scrtext_l = 'Dias Transcurridos.' )
      ( tabname = 'IT_DATA' fieldname = 'UDATE'     scrtext_l = 'Lib. solped' )
      ( tabname = 'IT_DATA' fieldname = 'SMF1'      scrtext_l = 'Status' )
-
-     ( tabname = 'IT_DATA' fieldname = 'EBELN'     scrtext_l = 'Doc. oc.' )
+*** INICIO MODIF. - 761 - 21/11/2025 - PTECHABAP01
+     ( tabname = 'IT_DATA' fieldname = 'EBELN'     scrtext_l = 'Doc. oc.' hotspot = 'X' )
+     ( tabname = 'IT_DATA' fieldname = 'ERNAM'     scrtext_l = 'Creado por' )
+*** FIN MODIF.    - 761 - 21/11/2025 - PTECHABAP01
      ( tabname = 'IT_DATA' fieldname = 'V_TRANS'   scrtext_l = 'Dias Transcurridos'  )
      ( tabname = 'IT_DATA' fieldname = 'EBDAT'     scrtext_l = 'Fec. Doc. oc.' )
      ( tabname = 'IT_DATA' fieldname = 'SMF2'      scrtext_l = 'Status' )
@@ -452,6 +524,8 @@ FORM created_catalog .
      ( tabname = 'IT_DATA' fieldname = 'EINDT'     scrtext_l = 'Fec. ent. pln.')
      ( tabname = 'IT_DATA' fieldname = 'EINDT1'    scrtext_l = 'Dias transcurridos')
      ( tabname = 'IT_DATA' fieldname = 'BUDAT1'    scrtext_l = 'Fec. entrg. real.' )
+*** MODIF. - 761 - 25/11/2025 - PTECHABAP01
+     ( tabname = 'IT_DATA' fieldname = 'CTD_PEND'    scrtext_l = 'Pendiente' )
      ( tabname = 'IT_DATA' fieldname = 'SMF3'      scrtext_l = 'Status' )
 
      ( tabname = 'IT_DATA' fieldname = 'BRTWR'     scrtext_l = 'Valor bruto'  )
@@ -711,6 +785,8 @@ FORM read_fec_it .
 
     CONCATENATE wa_nuevas_alv-ebdat+6(2) '.' wa_nuevas_alv-ebdat+4(2) '.'
       wa_nuevas_alv-ebdat(4) INTO wa_nuevas_alv-ebdat.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+    PERFORM f_get_working_days USING udate ebdat CHANGING wa_nuevas_alv-v_trans.
   ENDIF.
 
   IF wa_nuevas_alv-budat1 IS INITIAL.
@@ -722,11 +798,23 @@ FORM read_fec_it .
 
     CONCATENATE wa_nuevas_alv-budat1+6(2) '.' wa_nuevas_alv-budat1+4(2) '.'
       wa_nuevas_alv-budat1(4) INTO wa_nuevas_alv-budat1.
+*** INICIO MODIF. - 761 - 20/11/2025 - PTECHABAP01
+    "days between planned and delivery day
+    IF budat < wa_nuevas_alv-eindt.
+      "llego antes de lo planeado
+      PERFORM f_get_working_days USING budat wa_nuevas_alv-eindt CHANGING wa_nuevas_alv-eindt1.
+      wa_nuevas_alv-eindt1 = wa_nuevas_alv-eindt1 * - 1.
+    ELSE.
+      PERFORM f_get_working_days USING wa_nuevas_alv-eindt budat  CHANGING wa_nuevas_alv-eindt1.
+    ENDIF.
+*** FIN MODIF.    - 761 - 20/11/2025 - PTECHABAP01
   ENDIF.
 
   IF wa_nuevas_alv-doc_udate IS NOT INITIAL.
     doc_udate = wa_nuevas_alv-doc_udate.
-    wa_nuevas_alv-days_tran = ebdat - doc_udate.
+*** MODIF. - 761 - 20/11/2025 - PTECHABAP01
+    "days between PO date and PO release date
+    PERFORM f_get_working_days USING ebdat doc_udate CHANGING wa_nuevas_alv-days_tran.
 
     CONCATENATE wa_nuevas_alv-doc_udate+6(2) '.' wa_nuevas_alv-doc_udate+4(2) '.'
       wa_nuevas_alv-doc_udate(4) INTO wa_nuevas_alv-doc_udate.
@@ -738,11 +826,6 @@ FORM read_fec_it .
   ENDIF.
 
 *asignacion de fecha a it_data
-*** INICIO MODIF. - 761 - 20/11/2025 - PTECHABAP01
-  PERFORM f_get_working_days USING budat wa_nuevas_alv-eindt CHANGING wa_nuevas_alv-eindt1.
-  PERFORM f_get_working_days USING udate ebdat CHANGING wa_nuevas_alv-v_trans.
-
-*** FIN MODIF.    - 761 - 20/11/2025 - PTECHABAP01
 
   IF wa_nuevas_alv-badat IS NOT INITIAL AND udate IS NOT INITIAL.
 *** MODIF. - 761 - 20/11/2025 - PTECHABAP01
@@ -780,9 +863,10 @@ FORM get_desc_material .
 
   READ TABLE documentos_de_compra INTO DATA(compra) WITH KEY ekpo-ebelp = wa_nuevas_alv-pos
                                                              ekpo-ebeln = wa_nuevas_alv-ebeln.
-  IF sy-subrc = 0.
-*** MODIF. - 761 - 19/11/2025 - PTECHABAP01
+*** INICIO MODIF. - 761 - 26/11/2025 - PTECHABAP01
+  IF sy-subrc = 0 AND compra-ekpo-matnr IS NOT INITIAL."Es un material
     wa_nuevas_alv-ernam   = compra-ekko-ernam.
+*** FIN MODIF.    - 761 - 26/11/2025 - PTECHABAP01
     wa_nuevas_alv-matnr  = compra-ekpo-matnr.
     wa_nuevas_alv-txz01  = compra-ekpo-txz01.
 
@@ -795,19 +879,48 @@ FORM get_desc_material .
     ENDIF.
 
     CLEAR wa_prcd.
+*** MODIF. - 761 - 26/11/2025 - PTECHABAP01
+    wa_nuevas_alv-netwr  = wa_nuevas_alv-brtwr.
     LOOP AT it_prcd INTO wa_prcd WHERE knumv = compra-ekko-knumv
                                    AND kposn = compra-ekpo-ebelp
                                    AND kschl <> 'PBXX'.
-      wa_nuevas_alv-netwr  = wa_nuevas_alv-brtwr + wa_prcd-kwert. "valor neto
-      wa_nuevas_alv-brtwr1 = wa_prcd-kwert.
+*** INICIO MODIF. - 761 - 26/11/2025 - PTECHABAP01
+      wa_nuevas_alv-netwr  = wa_nuevas_alv-netwr + wa_prcd-kwert. "valor neto
+      wa_nuevas_alv-brtwr1 = wa_nuevas_alv-brtwr1 + wa_prcd-kwert.
+*** FIN MODIF.    - 761 - 26/11/2025 - PTECHABAP01
     ENDLOOP.
-  ELSE.
+*** MODIF. - 761 - 26/11/2025 - PTECHABAP01
+  ELSEIF sy-subrc <> 0.
     READ TABLE solicitudes_de_pedido INTO DATA(solped) WITH KEY banfn = wa_nuevas_alv-banfn
                                                                 bnfpo = wa_nuevas_alv-bnfpo.
     IF sy-subrc = 0.
       wa_nuevas_alv-matnr  = solped-matnr.
       wa_nuevas_alv-txz01  = solped-txz01.
     ENDIF.
+*** INICIO MODIF. - 761 - 26/11/2025 - PTECHABAP01
+  ELSEIF sy-subrc = 0 AND compra-ekpo-matnr IS INITIAL.
+    "SERVICIOS
+    SELECT a~ebeln, a~ebelp, b~kschl, b~kwert FROM eslh AS a INNER JOIN
+      prcd_elements AS b ON a~knumv = b~knumv
+      INTO TABLE @DATA(lt_pricing_serv)
+      WHERE
+        a~ebeln   = @compra-ekpo-ebeln AND
+        a~ebelp   = @compra-ekpo-ebelp AND
+        a~packno  = ( SELECT MAX( packno ) FROM eslh WHERE ebeln = @compra-ekpo-ebeln AND
+                                        ebelp = @compra-ekpo-ebelp ).
+
+    READ TABLE lt_pricing_serv INTO DATA(ls_total) WITH KEY kschl = 'PRSX'.
+    IF sy-subrc = 0.
+      wa_nuevas_alv-brtwr  = ls_total-kwert.
+    ENDIF.
+
+    wa_nuevas_alv-netwr = wa_nuevas_alv-brtwr.
+    LOOP AT lt_pricing_serv INTO DATA(ls_pricing).
+      wa_nuevas_alv-netwr  = wa_nuevas_alv-netwr + ls_pricing-kwert. "valor neto
+      wa_nuevas_alv-brtwr1 = wa_nuevas_alv-brtwr1 + wa_prcd-kwert.
+    ENDLOOP.
+
+*** FIN MODIF.    - 761 - 26/11/2025 - PTECHABAP01
   ENDIF.
 
 ENDFORM.
