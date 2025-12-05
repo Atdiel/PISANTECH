@@ -41,6 +41,8 @@ FORM create_1ordcompl .
 
     IF lv_lines > 0.
       LOOP AT lt_orders INTO ls_orders.
+*** MODIF. - 900 - 04/12/2025 - PTECHABAP01
+        WRITE: / 'OC: ' COLOR 1, ls_orders-ebeln COLOR 1.
 
         " Verificar la liberación en CDPOS
         SELECT SINGLE changenr
@@ -138,9 +140,9 @@ FORM create_1ordcompl .
       INNER JOIN ekko AS h_oc ON h_oc~ebeln = i_mod~objectid
       INTO TABLE @DATA(lt_purchase_orders)
       WHERE
-        i_mod~changenr    = ( SELECT MAX( changenr ) FROM cdpos
-                              WHERE objectclas  = 'EINKBELEG' AND
-                                    fname       = 'FRGKE' AND value_new = 'L') AND
+*        i_mod~changenr    = ( SELECT MAX( changenr ) FROM cdpos
+*                              WHERE objectclas  = 'EINKBELEG' AND
+*                                    fname       = 'FRGKE' AND value_new = 'L') AND
         i_mod~objectclas = 'EINKBELEG' AND
         i_mod~tabname = 'EKKO' AND
         i_mod~fname       = 'FRGKE' AND
@@ -160,6 +162,7 @@ FORM create_1ordcompl .
 *** INICIO MODIF. - 900 - 02/12/2025 - PTECHABAP01
 *      LOOP AT lt_orders INTO ls_orders.
       LOOP AT lt_purchase_orders INTO DATA(ls_po).
+        WRITE: / 'OC: ' COLOR 1, ls_po-h_oc-ebeln COLOR 1.
 *** FIN MODIF.    - 900 - 02/12/2025 - PTECHABAP01
         CLEAR: val_mensaj.
 *** INICIO MODIF. - 900 - 02/12/2025 - PTECHABAP01
@@ -180,39 +183,39 @@ FORM create_1ordcompl .
 *            WHERE changenr = lv_changenr.
 
 *          IF sy-subrc = 0.
-            WRITE: / 'Fecha de liberación obtenida:', ls_po-udate.
+        WRITE: / 'Fecha de liberación obtenida:', ls_po-udate.
 *** FIN MODIF.    - 900 - 02/12/2025 - PTECHABAP01
-            WRITE: / 'Fecha actual del sistema:', lv_current_date.
+        WRITE: / 'Fecha actual del sistema:', lv_current_date.
 
-            " Comprobar si el checkbox está marcado
-            WRITE: / 'Estado de check de reenvio:', p_chk.  " Mensaje de depuración
+        " Comprobar si el checkbox está marcado
+        WRITE: / 'Estado de check de reenvio:', p_chk.  " Mensaje de depuración
 
-            " Permitir enviar el correo si el checkbox está marcado o si no se había enviado antes
-            IF p_chk = abap_true OR val_mensaj <> 'X'.
+        " Permitir enviar el correo si el checkbox está marcado o si no se había enviado antes
+        IF p_chk = abap_true OR val_mensaj <> 'X'.
 *** INICIO MODIF. - 900 - 02/12/2025 - PTECHABAP01
-              CLEAR ls_orders.
-              ls_orders = CORRESPONDING #( ls_po-h_oc ).
+          CLEAR ls_orders.
+          ls_orders = CORRESPONDING #( ls_po-h_oc ).
 *** FIN MODIF.    - 900 - 02/12/2025 - PTECHABAP01
-              CALL FUNCTION 'ZMF_SEND_1MAIL'
-                EXPORTING
-                  is_ekko    = ls_orders
-                  iv_flag    = p_chk
-                IMPORTING
-                  val_mensaj = val_mensaj
-                EXCEPTIONS
-                  OTHERS     = 1.
+          CALL FUNCTION 'ZMF_SEND_1MAIL'
+            EXPORTING
+              is_ekko    = ls_orders
+              iv_flag    = p_chk
+            IMPORTING
+              val_mensaj = val_mensaj
+            EXCEPTIONS
+              OTHERS     = 1.
 
-              IF val_mensaj = ''.
+          IF val_mensaj = ''.
 *** INICIO MODIF. - 900 - 02/12/2025 - PTECHABAP01
-                APPEND ls_po-h_oc-ebeln TO lt_sent_orders.
-                WRITE: / 'El correo enviado para la orden', ls_po-h_oc-ebeln, 'se envió exitosamente.'.
+            APPEND ls_po-h_oc-ebeln TO lt_sent_orders.
+            WRITE: / 'El correo enviado para la orden', ls_po-h_oc-ebeln, 'se envió exitosamente.'.
 *** FIN MODIF.    - 900 - 02/12/2025 - PTECHABAP01
-              ELSEIF val_mensaj = 'X'.
-                sum = sum + 1.
-              ENDIF.
-            ELSE.
-              WRITE: / 'El correo ya fue enviado previamente para la orden', ls_orders-ebeln.
-            ENDIF.
+          ELSEIF val_mensaj = 'X'.
+            sum = sum + 1.
+          ENDIF.
+        ELSE.
+          WRITE: / 'El correo ya fue enviado previamente para la orden' COLOR 3, ls_orders-ebeln COLOR 3.
+        ENDIF.
 *          ELSE.
 *            WRITE: / 'No se pudo obtener la fecha de liberación para la orden', ls_orders-ebeln.
 *          ENDIF.
