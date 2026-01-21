@@ -221,3 +221,53 @@ gv_otca_nac.
 
 ** Total
 *  gv_tot = gv_subt + gv_desc + gv_flet + gv_otca.
+
+*** INICIO MODIF. - 2483 - 28/11/2025 - PTECHABAP01
+CLEAR gv_subt.
+LOOP AT gt_serv_price INTO DATA(ls_serv).
+  gv_subt = gv_subt + ls_serv-brtwr.
+  gv_desc = gv_desc + ( ls_serv-netwr - ls_serv-brtwr ).
+ENDLOOP.
+REFRESH gt_serv_price.
+IF is_ekko-ebeln IS INITIAL.
+  GET PARAMETER ID 'SMART_EBELN' FIELD is_ekko-ebeln.
+ENDIF.
+
+*SELECT * FROM ekpo
+*  INTO TABLE @DATA(lt_ekpo)
+*  WHERE
+*    ebeln = @is_ekko-ebeln.
+*
+*DELETE lt_ekpo WHERE matnr IS NOT INITIAL AND pstyp <> 9.
+*
+*IF lt_ekpo IS NOT INITIAL.
+*  SELECT * FROM eslh
+*    INTO TABLE @DATA(lt_eslh)
+*    FOR ALL ENTRIES IN @lt_ekpo
+*    WHERE
+*      ebeln = @lt_ekpo-ebeln AND
+*      ebelp = @lt_ekpo-ebelp AND
+*      packno = ( SELECT MAX( packno ) FROM eslh
+*                  WHERE
+*                    ebeln = @lt_ekpo-ebeln AND
+*                    ebelp = @lt_ekpo-ebelp ).
+*
+*  IF sy-subrc = 0.
+*    SELECT * FROM esll
+*      INTO TABLE @DATA(lt_esll)
+*      FOR ALL ENTRIES IN @lt_eslh
+*      WHERE
+*        packno = @lt_eslh-packno.
+*
+*    IF lt_esll IS NOT INITIAL.
+*      LOOP AT lt_esll INTO DATA(ls_esll).
+*        IF ( ls_esll-brtwr - ls_esll-netwr ) > 0.
+*          gv_desc = gv_desc - ( ls_esll-brtwr - ls_esll-netwr ).
+**          gv_tot  = gv_tot + gv_desc.
+*          gv_subt = gv_subt + ( ls_esll-brtwr - ls_esll-netwr ).
+*        ENDIF.
+*      ENDLOOP.
+*    ENDIF.
+*  ENDIF.
+*ENDIF.
+*** FIN MODIF.    - 2483 - 28/11/2025 - PTECHABAP01
