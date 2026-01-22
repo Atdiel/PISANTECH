@@ -53,7 +53,21 @@ FORM check_upcomming_delivery .
     PERFORM send_to_pr_group TABLES t_restantes.
     PERFORM send_to_provider TABLES t_restantes.
 
+*** INICIO MODIF. - 903 - 20/01/2026 - PTECHABAP01
+    "Eliminamos del rango los repetidos
+    DELETE ADJACENT DUPLICATES FROM gr_ebeln COMPARING low.
+    "Eliminamos de la tabla para no hacer el guardado en db
+    IF gr_ebeln IS NOT INITIAL.
+      DELETE notif_send WHERE ebeln IN gr_ebeln.
+    ENDIF.
+*** FIN MODIF. - 903 - 20/01/2026 - PTECHABAP01
     INSERT zmmt_notifica_oc FROM TABLE notif_send.
+*** INICIO MODIF. - 903 - 20/01/2026 - PTECHABAP01
+    IF sy-subrc = 0.
+      "Hacemos commit si todo salio bien
+      COMMIT WORK.
+    ENDIF.
+*** FIN MODIF.    - 903 - 20/01/2026 - PTECHABAP01
 
     CLEAR: t_restantes, notif_send, r_date.
   ENDIF.
@@ -70,10 +84,23 @@ FORM send_to_pr_group  TABLES oc_res TYPE ty_tb_restantes.
   DATA: t_venc      TYPE TABLE OF ty_restantes.
 
   LOOP AT oc_res INTO DATA(grp_main) GROUP BY ( ekgrp = grp_main-ekgrp ).
+*** MODIF. - 903 - 14/01/2026 - PTECHABAP01
+    WRITE: / |Enviando correo para grupo de compras: { grp_main-ekgrp }| COLOR 1.
     LOOP AT GROUP grp_main INTO DATA(grp).
       APPEND grp TO t_venc.
+*** MODIF. - 903 - 14/01/2026 - PTECHABAP01
+      WRITE: / |OC: { grp-ebeln }| COLOR 1.
     ENDLOOP.
     PERFORM send_email TABLES t_venc USING 'X' CHANGING sy-subrc."grp_main-ekgrp.
+*** INICIO MODIF. - 903 - 16/01/2026 - PTECHABAP01
+    IF sy-subrc <> 0.
+      "Eliminamos de la tabla z para volver a hacer el intento de correo
+      gr_ebeln = VALUE #( BASE gr_ebeln FOR grp_ebeln IN t_venc ( sign = 'I'
+                                                                  option = 'EQ'
+                                                                  low = grp_ebeln-ebeln ) ).
+
+    ENDIF.
+*** FIN MODIF.    - 903 - 16/01/2026 - PTECHABAP01
     CLEAR: t_venc.
   ENDLOOP.
 ENDFORM.
@@ -88,10 +115,22 @@ ENDFORM.
 FORM send_to_provider  TABLES oc_res TYPE ty_tb_restantes.
   DATA: t_venc      TYPE TABLE OF ty_restantes.
   LOOP AT oc_res INTO DATA(prov_main) GROUP BY ( lifnr = prov_main-lifnr ).
+*** MODIF. - 903 - 14/01/2026 - PTECHABAP01
+    WRITE: / |Enviando correo para proveedor: { prov_main-lifnr }| COLOR 1.
     LOOP AT GROUP prov_main INTO DATA(prov).
       APPEND prov TO t_venc.
+*** MODIF. - 903 - 1470172026 - PTECHABAP01
+      WRITE: / |OC: { prov-ebeln }| COLOR 1.
     ENDLOOP.
     PERFORM send_email TABLES t_venc USING '' CHANGING sy-subrc."grp_main-ekgrp.
+*** INICIO MODIF. - 903 - 16/01/2026 - PTECHABAP01
+    IF sy-subrc <> 0.
+      "Eliminamos de la tabla z para volver a hacer el intento de correo
+      gr_ebeln = VALUE #( BASE gr_ebeln FOR grp_ebeln IN t_venc ( sign = 'I'
+                                                                  option = 'EQ'
+                                                                  low = grp_ebeln-ebeln ) ).
+    ENDIF.
+*** FIN MODIF.    - 903 - 16/01/2026 - PTECHABAP01
     CLEAR: t_venc.
   ENDLOOP.
 ENDFORM.
@@ -103,12 +142,14 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 *&      --> T_RESTANTES
 *&---------------------------------------------------------------------*
-FORM send_email  TABLES   oc_send TYPE ty_tb_restantes USING md TYPE string.
+FORM send_email  TABLES   oc_send TYPE ty_tb_restantes USING md TYPE string
+*** MODIF. - 903 - 16/01/2026 - PTECHABAP01
+                                                       CHANGING subrc TYPE syst_subrc."grp TYPE ekko-ekgrp.
   DATA: gdt_text  TYPE soli_tab.
 
   DATA: go_bcs      TYPE REF TO cl_bcs,
         go_document TYPE REF TO cl_document_bcs,
-*** MODIF. - 900 - 12/11/2025 - PTECHABAP01
+*** MODIF. - 903 - 12/11/2025 - PTECHABAP01
         lo_sender   TYPE REF TO if_sender_bcs,
         go_address  TYPE REF TO cl_cam_address_bcs.
 
@@ -117,11 +158,13 @@ FORM send_email  TABLES   oc_send TYPE ty_tb_restantes USING md TYPE string.
 
   DATA: linea TYPE TABLE OF tline.
   DATA: email_address      TYPE TABLE OF ad_smtpadr,
-*** MODIF. - 900 - 12/11/2025 - PTECHABAP01
+*** MODIF. - 903 - 12/11/2025 - PTECHABAP01
         lv_email_comprador TYPE ad_smtpadr.
 *  DATA: notif_send TYPE zmmt_notifica_oc.
 
   DATA(tem) = oc_send[ 1 ].
+*** MODIF. - 903 - 16/01/2026 - PTECHABAP01
+  CLEAR subrc.
 
   IF md = 'X'.
     SELECT mailaddres FROM zmmt_correo_venc WHERE ekgrp = @tem-ekgrp
@@ -133,16 +176,26 @@ FORM send_email  TABLES   oc_send TYPE ty_tb_restantes USING md TYPE string.
     ENDIF.
   ENDIF.
 
+*** INICIO MODIF. - 903 - 14/01/2026 - PTECHABAP01
+  IF email_address IS INITIAL.
+    subrc = 4.
+    DATA(lv_dest) = COND #( WHEN md = abap_true THEN 'grupo de compras' ELSE 'proveedor' ).
+    WRITE: / |No se encontro correo para el { lv_dest }| COLOR 6.
+    RETURN.
+  ENDIF.
+*** FIN MODIF.    - 903 - 14/01/2026 - PTECHABAP01
 
 *  Crear el objeto de correo
   TRY.
       go_bcs = cl_bcs=>create_persistent( ).
     CATCH cx_send_req_bcs.
+*** MODIF. - 903 - 14/01/2026 - PTECHABAP01
+      subrc = 4.
       WRITE: / 'Error al crear objeto de correo' COLOR 6.
       RETURN.
   ENDTRY.
 
-*** INICIO MODIF. - 900 - 12/11/2025 - PTECHABAP01
+*** INICIO MODIF. - 903 - 12/11/2025 - PTECHABAP01
   "Obtener el email del comprador
   CLEAR: lv_email_comprador.
 
@@ -171,10 +224,28 @@ FORM send_email  TABLES   oc_send TYPE ty_tb_restantes USING md TYPE string.
       WHERE
         name = 'ZMAIL_COMPRADOR'.
 
+*** INICIO MODIF. - 903 - 14/01/2026 - PTECHABAP01
+    IF sy-subrc <> 0.
+      subrc = 4.
+      WRITE: / 'Correo comprador no puede ser vacio' COLOR 6.
+      RETURN.
+    ENDIF.
+*** INICIO MODIF. - 903 - 14/01/2026 - PTECHABAP01
   ENDIF.
 
+*** INICIO MODIF. - 903 - 14/01/2026 - PTECHABAP01
+  CONDENSE lv_email_comprador NO-GAPS.
+  TRANSLATE lv_email_comprador TO LOWER CASE.
+  TRY.
+      lo_sender = cl_cam_address_bcs=>create_internet_address( lv_email_comprador ).
+    CATCH cx_address_bcs.
+      subrc = 4.
+      WRITE: / 'Error al crear objeto de destinatario' COLOR 6.
+      RETURN.
+  ENDTRY.
+*** FIN MODIF.    - 903 - 14/01/2026 - PTECHABAP01
   go_bcs->set_sender( lo_sender ).
-*** FIN MODIF.    - 900 - 12/11/2025 - PTECHABAP01
+*** FIN MODIF.    - 903 - 12/11/2025 - PTECHABAP01
 
 *  gs_subject = 'Entrada de material de OC completados'."'Asunto del correo'.
   gs_subject = 'Plazos de entrega de material de OC próximos a vencer'."'Asunto del correo'.
@@ -209,9 +280,13 @@ FORM send_email  TABLES   oc_send TYPE ty_tb_restantes USING md TYPE string.
         wrong_access_to_archive = 7
         OTHERS                  = 8.
     IF sy-subrc <> 0.
-      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
-        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+*** INICIO MODIF. - 903 - 14/01/2026 - PTECHABAP01
+      subrc = 4.
+      WRITE: / |{ sy-msgv1 } { sy-msgv2 } { sy-msgv3 } { sy-msgv4 }| COLOR 6.
+*      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+*        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
       RETURN.
+*** FIN MODIF.    - 903 - 14/01/2026 - PTECHABAP01
     ENDIF.
 *   El Material &1 de la orden &2 debe ser entregado &3.
     DATA(notificacion) = replace( val = linea[ 1 ]-tdline sub = '&1' with = mat ).
@@ -227,31 +302,40 @@ FORM send_email  TABLES   oc_send TYPE ty_tb_restantes USING md TYPE string.
                       i_text = gdt_text
                       i_subject = gs_subject ).
     CATCH cx_document_bcs.
-      MESSAGE 'Error al crear contenido del correo' TYPE 'S' DISPLAY LIKE 'E'.
+*** INICIO MODIF. - 903 - 16/01/2026 - PTECHABAP01
+      subrc = 4.
+      WRITE: / 'Error al crear contenido del correo' COLOR 6.
       RETURN.
+*** FIN MODIF.    - 903 - 16/01/2026 - PTECHABAP01
   ENDTRY.
 
 * Agregar direcciones de correo electrónico y enviar el correo
   LOOP AT email_address INTO DATA(gv_email).
 
-*** INICIO MODIF. - 900 - 12/11/2025 - PTECHABAP01
+*** INICIO MODIF. - 903 - 12/11/2025 - PTECHABAP01
     CONDENSE lv_email_comprador NO-GAPS.
     TRANSLATE lv_email_comprador TO LOWER CASE.
-*** FIN MODIF.    - 900 - 12/11/2025 - PTECHABAP01
+*** FIN MODIF.    - 903 - 12/11/2025 - PTECHABAP01
     TRY.
 *      CREATE_INTERNET_ADDRESS: Crea un objeto de dirección de correo electrónico.
         go_address = cl_cam_address_bcs=>create_internet_address( gv_email )."-mailaddres ).
       CATCH cx_address_bcs.
-        MESSAGE 'Error al crear objeto de destinatario' TYPE 'S' DISPLAY LIKE 'E'.
+*** INICIO MODIF. - 903 - 16/01/2026 - PTECHABAP01
+        subrc = 4.
+        WRITE: / 'Error al crear objeto de destinatario' COLOR 6.
         RETURN.
+*** FIN MODIF.    - 903 - 16/01/2026 - PTECHABAP01
     ENDTRY.
 
     TRY.
 *      ADD_RECIPIENT: Agrega la dirección de correo electrónico a la lista de destinatarios.
         go_bcs->add_recipient( go_address ).
       CATCH cx_send_req_bcs.
-        MESSAGE 'Error al agregar destinatario a la lista' TYPE 'S' DISPLAY LIKE 'E'.
+*** INICIO MODIF. - 903 - 16/01/2026 - PTECHABAP01
+        subrc = 4.
+        WRITE: / 'Error al agregar destinatario a la lista' COLOR 6.
         RETURN.
+*** FIN MODIF.    - 903 - 16/01/2026 - PTECHABAP01
     ENDTRY.
   ENDLOOP.
 
@@ -259,24 +343,33 @@ FORM send_email  TABLES   oc_send TYPE ty_tb_restantes USING md TYPE string.
 *    SET_DOCUMENT: Asocia el documento al objeto de correo.
       go_bcs->set_document( go_document ).
     CATCH cx_send_req_bcs.
-      MESSAGE 'Error al asignar el objeto de correo' TYPE 'S' DISPLAY LIKE 'E'.
+*** INICIO MODIF. - 903 - 16/01/2026 - PTECHABAP01
+      subrc = 4.
+      WRITE: / 'Error al asignar el objeto de correo' COLOR 6.
       RETURN.
+*** FIN MODIF.    - 903 - 16/01/2026 - PTECHABAP01
   ENDTRY.
 
   TRY.
 *    SET_SEND_IMMEDIATELY: Marca el correo para envío inmediato.
       go_bcs->set_send_immediately( abap_true ).
     CATCH cx_send_req_bcs.
-      MESSAGE 'Error al marcar el correo como envío inmediato' TYPE 'S' DISPLAY LIKE 'E'.
+*** INICIO MODIF. - 903 - 16/01/2026 - PTECHABAP01
+      subrc = 4.
+      WRITE: / 'Error al marcar el correo como envío inmediato' COLOR 6.
       RETURN.
+*** FIN MODIF.    - 903 - 16/01/2026 - PTECHABAP01
   ENDTRY.
 
   TRY.
 *    SEND: Envía el correo.
       gs_result = go_bcs->send( abap_true ).
     CATCH cx_send_req_bcs.
-      MESSAGE 'Error al enviar el correo' TYPE 'S' DISPLAY LIKE 'E'.
+*** INICIO MODIF. - 903 - 16/01/2026 - PTECHABAP01
+      subrc = 4.
+      WRITE: / 'Error al enviar el correo' COLOR 6.
       RETURN.
+*** FIN MODIF.    - 903 - 16/01/2026 - PTECHABAP01
   ENDTRY.
 
   IF gs_result EQ abap_true.
