@@ -29,6 +29,8 @@ TYPES: BEGIN OF ty_areas_output.
          nursing   TYPE sy-uzeit,
          pharmacy  TYPE sy-uzeit,
          reception TYPE sy-uzeit,
+*** MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+         insurance TYPE sy-uzeit,
          role_name TYPE char15,
        END OF ty_areas_output.
 

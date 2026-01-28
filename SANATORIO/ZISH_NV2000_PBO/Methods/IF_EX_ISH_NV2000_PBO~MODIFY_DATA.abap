@@ -9,7 +9,10 @@
           INTO ls_0186
           WHERE
             einri       = <rndbew>-einri AND
-            falnr       = <rndbew>-falnr.
+*** INICIO MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+            falnr       = <rndbew>-falnr AND
+            deleted     = abap_false.
+*** FIN MODIF.    - 3565 - 27/01/2026 - PTECHABAP01
 
         IF sy-subrc = 0.
           IF ls_0186-status <> icon_green_light.

@@ -214,6 +214,29 @@ FUNCTION zismf_crear_pre_alta.
   "Eliminamos la unidad medica que solicita la pre-alta
 *  DELETE lt_utonotify WHERE uname = ls_user-uname.
 
+*** INICIO MODIF. - 3565 - 26/01/2026 - PTECHABAP01
+  "Buscamos la clase de aseguradora para este episodio
+  SELECT SINGLE kostr FROM ncir
+    INTO @DATA(lv_kostr)
+    WHERE
+      einri   = @iv_einri AND
+      falnr   = @iv_falnr AND
+      lfdnr   = ( SELECT max( lfdnr ) FROM ncir WHERE einri = @iv_einri AND falnr = @iv_falnr ).
+
+  "Obtener clase aseguradora
+  SELECT SINGLE ins_prov_type FROM nins
+    INTO @DATA(lv_ins_cls)
+    WHERE
+      partner   = @lv_kostr.
+
+  "Buscar en la tabla de usuarios-aseguradora por clase aseguradora
+  SELECT * FROM zist0195
+    INTO TABLE @DATA(lt_usr_ins)
+    WHERE
+      ins_prov_type   = @lv_ins_cls.
+
+*** FIN MODIF.    - 3565 - 26/01/2026 - PTECHABAP01
+
   LOOP AT lt_utonotify INTO DATA(ls_utonotify).
     "Buscar si la unidad esta registrada en monitor por ORGFA.
     READ TABLE lt_unidades WITH KEY orgfa = ls_utonotify-area TRANSPORTING NO FIELDS.
@@ -226,6 +249,16 @@ FUNCTION zismf_crear_pre_alta.
       ENDIF.
     ENDIF.
 
+*** INICIO MODIF. - 3565 - 26/01/2026 - PTECHABAP01
+    "Validamos si el rol del usuario es aseguradora, de ser asi verificamos si por clase de aseg. necesita la notif.
+    IF ls_utonotify-role = 4.
+      READ TABLE lt_usr_ins WITH KEY uname = ls_utonotify TRANSPORTING NO FIELDS.
+      IF sy-subrc <> 0.
+        "Saltamos al sig. registro al no estar en tabla clase aseguradora.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+*** FIN MODIF.    - 3565 - 26/01/2026 - PTECHABAP01
     "Agregamos unidad para mandar notificacion
     APPEND VALUE #(   id    = lv_next_id
                       einri = iv_einri
