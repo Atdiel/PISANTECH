@@ -31,6 +31,9 @@ FORM f_datos_pre_alta .
         deleted   = abap_false. "No traer registros eliminados por ADMIN
   ENDIF.
 
+*** MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+  SORT gt_pre_output BY pre_date pre_hour DESCENDING.
+
 ENDFORM.
 *&---------------------------------------------------------------------*
 *&      Form  F_DATOS_AREA
@@ -81,6 +84,9 @@ FORM f_datos_area .
             lo_are_all->pharmacy = ls_are_all-resp_hour.
           WHEN 3.
             lo_are_all->reception = ls_are_all-resp_hour.
+*** INICIO MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+          WHEN 4.
+            lo_are_all->insurance = ls_are_all-resp_hour.
         ENDCASE.
 
         "Si hay un caso donde alguno no se haya verificado levantamos flag
@@ -159,7 +165,8 @@ FORM f_datos_area .
         WHEN 3.
           lo_are_det_all->role_name = text-011.
         WHEN 4.
-          lo_are_output->role_name = text-017.
+*** MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+          lo_are_det_all->role_name = text-017.
       ENDCASE.
     ENDLOOP.
 

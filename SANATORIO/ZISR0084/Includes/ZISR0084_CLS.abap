@@ -111,10 +111,12 @@ CLASS lcl_alv_management IMPLEMENTATION.
     DATA: ls_variant TYPE disvariant.
 
     CLEAR ls_variant.
-
-    ls_variant-report   = sy-repid.
+*** MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+    ls_variant-report   = |{ sy-repid }_{ sy-tcode }|.
     ls_variant-username = sy-uname.
 
+*** MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+    ls_variant-handle = iv_cont_name.
     cs_layout-sel_mode = 'D'.
     cs_layout-col_opt  = abap_true.
     cs_layout-zebra    = abap_true.
@@ -330,6 +332,8 @@ CLASS lcl_are_management IMPLEMENTATION.
       APPEND VALUE #( fieldname = 'NURSING' reptext = 'Enfermería' just = 'R' outputlen = 12 ) TO ct_fieldcat.
       APPEND VALUE #( fieldname = 'PHARMACY' reptext = 'Farmacia' just = 'R' outputlen = 12 ) TO ct_fieldcat.
       APPEND VALUE #( fieldname = 'RECEPTION' reptext = 'Recepción' just = 'R' outputlen = 12 ) TO ct_fieldcat.
+*** MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+      APPEND VALUE #( fieldname = 'INSURANCE' reptext = 'Aseguradora' just = 'R' outputlen = 12 ) TO ct_fieldcat.
       APPEND VALUE #( fieldname = 'RESP_HOUR' reptext = 'Hora Respuesta' just = 'R' outputlen = 12 ) TO ct_fieldcat.
       APPEND VALUE #( fieldname = 'RESP_DATE' reptext = 'Día Respuesta' just = 'R' outputlen = 12 ) TO ct_fieldcat.
       APPEND VALUE #( fieldname = 'RESP_USER' reptext = 'Usuario Liberó' just = 'R' outputlen = 12 ) TO ct_fieldcat.
@@ -506,6 +510,10 @@ CLASS lcl_are_management IMPLEMENTATION.
           lo_history_are->role_name = text-010.
         WHEN 3.
           lo_history_are->role_name = text-011.
+*** INICIO MODIF. - 3565 - 27/01/2026 - PTECHABAP01
+        WHEN 4.
+          lo_history_are->role_name = text-017.
+*** FIN MODIF.    - 3565 - 27/01/2026 - PTECHABAP01
       ENDCASE.
     ENDLOOP.
 
