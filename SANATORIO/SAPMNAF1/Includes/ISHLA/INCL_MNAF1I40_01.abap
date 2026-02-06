@@ -56,35 +56,29 @@ IF sy-subrc = 0.
           ls_reserva TYPE resb,
           lv_kzear   TYPE char1.
 
-*    SELECT SINGLE * FROM zmmmxt1005               "Obtener folio
-*     INTO CORRESPONDING FIELDS OF ls_folio
-*     WHERE falnr = nfal-falnr
-*       AND einri = rnpa1-einri.
-*
-*    IF sy-subrc = 0.
+*** INICIO MODIF. - 3164 - 30/01/2026 - PTECHABAP01
+    DATA: lv_folio TYPE zisde_folios.
 
-*     SELECT * FROM resb
-*        INTO TABLE lt_reserva
-*        WHERE rsnum = ls_folio-rsnum.
+    CLEAR: lv_folio.
 
-*      LOOP AT lt_reserva INTO ls_reserva.
-*        IF ls_reserva-kzear IS NOT INITIAL.
-*            lv_kzear = 'X'.
-*          EXIT.
-*        ENDIF.
-*      ENDLOOP.
-
-      IF lv_kzear IS INITIAL.
+    DATA(lv_pending) = zglcl_enhancement_helper=>has_pending_folio( EXPORTING iv_einri = rnpa1-einri
+                                                                              iv_falnr = nfal-falnr
+                                                                    IMPORTING ev_folio = lv_folio ).
+    IF lv_pending = abap_true.
 *** INICIO MODIF. - 3164  - 17/07/2025   - Bryan Bautista Prado
-*        IF rnaf0-tabkz = 'X'.
-*          MESSAGE i083(zish) WITH ls_folio-folio.
-*        ELSEIF rnaf0-echtkz = 'X'. 
-          MESSAGE e083(zish) WITH ls_folio-folio.
-         ENDIF.
+      IF rnaf0-tabkz = 'X'.
+*** MODIF. - 3164 - 30/01/2026 - PTECHABAP01
+        MESSAGE i083(zish) WITH lv_folio.
+      ELSEIF rnaf0-echtkz = 'X'.
+*** INICIO MODIF. - 3164 - 28/01/2026 - DEVBT02
+        MESSAGE i083(zish) WITH lv_folio DISPLAY LIKE 'E'.
+        EXIT.
+*** FIN MODIF.    - 3164 - 28/01/2026 - DEVBT02
+      ENDIF.
 *** FIN MODIF.    - 3164  - 17/07/2025   - Bryan Bautista Prado
 *   El episodio aún tiene el folio & pendiente de asignar en quirófano
-      ENDIF.
-*    ENDIF.
+    ENDIF.
+*** FIN MODIF.    - 3164 - 30/01/2026 - PTECHABAP01
 
 * Se valida si no se tiene restricciones para la aseguradora o el
 * particular

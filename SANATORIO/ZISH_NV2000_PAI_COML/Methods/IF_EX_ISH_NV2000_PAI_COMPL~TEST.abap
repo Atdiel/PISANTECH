@@ -74,7 +74,10 @@ METHOD if_ex_ish_nv2000_pai_compl~test.
 
   FIELD-SYMBOLS: <rndbew> TYPE rndbew,
                  <rnpat>  TYPE rnpat,
-                 <rndfal> TYPE rndfal.
+*** INICIO MODIF. - 3164 - 29/01/2026 - PTECHABAP01
+                 <rndfal> TYPE rndfal,
+                 <lf_old> TYPE rndfal.
+*** FIN MODIF.    - 3164 - 29/01/2026 - PTECHABAP01
 
   ASSIGN ('(SAPLNBE2)RNDBEW') TO <rndbew>.
   rc1 = sy-subrc.
@@ -155,6 +158,46 @@ METHOD if_ex_ish_nv2000_pai_compl~test.
       ENDIF.
     ENDIF.
   ENDIF.
+
+*** INICIO MODIF. - 3164 - 28/01/2026 - DEVBT02
+  IF rc1 = '0' AND rc2 = '0' AND rc3 = '0' .
+    IF i_vcode EQ 'UPD' AND
+      ( sy-ucomm = 'END' OR sy-ucomm = 'BACK' OR sy-ucomm = 'SAVE' OR sy-ucomm = 'YES' OR sy-ucomm = 'STO' )
+      AND sy-tcode = 'NV2001'.
+
+      DATA lv_folio TYPE zisde_folios.
+      CLEAR lv_folio.
+
+      IF sy-ucomm = 'STO'.
+        "ES ANULACION DE CONSULTA
+        DATA(lv_pend) = zglcl_enhancement_helper=>has_pending_folio( EXPORTING iv_einri = <rndbew>-einri
+                                                                                    iv_falnr = <rndbew>-falnr
+                                                                          IMPORTING ev_folio = lv_folio ).
+        IF lv_pend = abap_true.
+          MESSAGE |El episodio aun tiene el folio: { lv_folio  ALPHA = OUT } imposible dar alta| TYPE 'I'.
+          LEAVE PROGRAM.
+        ENDIF.
+      ELSE.
+
+        "Validar si se modifico la fecha fin (comparando el valor anterior y el nuevo)
+        ASSIGN ('(SAPLNFA2)*RNDFAL') TO <lf_old>.
+        IF sy-subrc = 0.
+          IF <lf_old>-enddt <> <rndfal>-enddt. "Si son diferentes, si se hizo cambio de fecha fin
+
+            DATA(lv_pending) = zglcl_enhancement_helper=>has_pending_folio( EXPORTING iv_einri = <rndbew>-einri
+                                                                                      iv_falnr = <rndbew>-falnr
+                                                                            IMPORTING ev_folio = lv_folio ).
+            IF lv_pending = abap_true.
+              MESSAGE |El episodio aun tiene el folio: { lv_folio  ALPHA = OUT } imposible dar alta| TYPE 'I'.
+              LEAVE PROGRAM.
+            ENDIF.
+
+          ENDIF.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+*** FIN MODIF.    - 3164 - 28/01/2026 - DEVBT02
 
   IF rc1 = '0' AND rc2 = '0' AND rc3 = '0' .
     IF ( i_vcode EQ 'UPD' OR i_vcode = 'INS' ) AND

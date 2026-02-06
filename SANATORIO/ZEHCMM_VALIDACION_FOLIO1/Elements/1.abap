@@ -1,45 +1,24 @@
- DATA: lt_reserva TYPE STANDARD TABLE OF resb,
-       ls_reserva TYPE resb,
-       ls_folio   TYPE zmmmxt1005, "Estructura para folio
-       ls_mesfec  TYPE string." Estructura para fecha de mensaje.
+*** INICIO MODIF. - 3164 - 30/01/2026 - PTECHABAP01
+ DATA: ls_mesfec  TYPE string." Estructura para fecha de mensaje.
+ DATA: lv_folio TYPE zisde_folios.
+ CLEAR: lv_folio.
+*** FIN MODIF.    - 3164 - 30/01/2026 - PTECHABAP01
+  IF alv_ucomm = 'NP97'."
+*** INICIO MODIF. - 3164 - 03/02/2026 - PTECHABAP01
+    DATA(lv_pending) = ZGLCL_ENHANCEMENT_HELPER=>has_pending_folio( EXPORTING iv_einri = rnpa1-einri
+                                                                              iv_falnr = nfal-falnr
+                                                                    IMPORTING ev_folio = lv_folio ).
+    IF lv_pending = abap_true.
 
- DATA: lv_kzear TYPE char1,
-       lv_title  TYPE string,
-       lv_text1  TYPE string,
-       lv_text2  TYPE string.
+        CONCATENATE 'El episodio tiene el folio pendiente: ' lv_folio
+*** FIN MODIF.    - 3164 - 03/02/2026 - PTECHABAP01
+          'Imposible asignar fecha final' INTO ls_mesfec SEPARATED BY space.
+        CALL FUNCTION 'POPUP_TO_INFORM'
+          EXPORTING
+            titel         = 'Advertencia'
+            txt1          = ls_mesfec
+            txt2          = ''.
 
-
-     IF alv_ucomm = 'NP97'."
-
-        SELECT SINGLE * FROM zmmmxt1005
-        INTO CORRESPONDING FIELDS OF ls_folio
-        WHERE einri = rnpa1-einri
-        AND falnr = nfal-falnr.
-*        AND ( asig = '' OR pick = '' ).
-
-          IF sy-subrc = '0'.
-            SELECT * FROM resb
-              INTO TABLE lt_reserva
-              WHERE rsnum = ls_folio-rsnum.
-
-              LOOP AT lt_reserva INTO ls_reserva.
-                IF ls_reserva-kzear IS NOT INITIAL.
-                  lv_kzear = 'X'.
-                  EXIT.
-                ENDIF.
-              ENDLOOP.
-
-              IF lv_kzear IS INITIAL.
-
-                CONCATENATE 'El episodio tiene el folio pendiente: ' ls_folio-folio
-                'Imposible asignar fecha final' INTO ls_mesfec SEPARATED BY space.
-                CALL FUNCTION 'POPUP_TO_INFORM'
-                EXPORTING
-                  titel         = 'Advertencia'
-                  txt1          = ls_mesfec
-                  txt2          = ''.
-
-                LEAVE TO SCREEN 0.
-        ENDIF.
-      ENDIF.
+         LEAVE TO SCREEN 0.
     ENDIF.
+  ENDIF.

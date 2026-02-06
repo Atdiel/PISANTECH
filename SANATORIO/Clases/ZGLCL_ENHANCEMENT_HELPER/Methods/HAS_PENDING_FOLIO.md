@@ -1,0 +1,4 @@
+IV_EINRI	Importing	Type	EINRI
+IV_FALNR	Importing	Type	FALNR
+EV_FOLIO	Exporting	Type	ZISDE_FOLIOS
+RV_HAS_PENDING	Returning	Type	ABAP_BOOL
