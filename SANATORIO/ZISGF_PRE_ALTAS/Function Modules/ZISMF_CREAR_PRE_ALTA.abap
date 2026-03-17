@@ -221,7 +221,10 @@ FUNCTION zismf_crear_pre_alta.
     WHERE
       einri   = @iv_einri AND
       falnr   = @iv_falnr AND
-      lfdnr   = ( SELECT max( lfdnr ) FROM ncir WHERE einri = @iv_einri AND falnr = @iv_falnr ).
+*** INICIO MODIF. - 3565 - 25/02/2026 - DEVBT02 Ramón Quintana
+      patkz   = @abap_false AND "Corresponda al de compañia no al de particular
+      storn   = @abap_false. "No este anulado
+*** FIN MODIF.    - 3565 - 25/02/2026 - DEVBT02 Ramón Quintana
 
   "Obtener clase aseguradora
   SELECT SINGLE ins_prov_type FROM nins
@@ -252,7 +255,7 @@ FUNCTION zismf_crear_pre_alta.
 *** INICIO MODIF. - 3565 - 26/01/2026 - PTECHABAP01
     "Validamos si el rol del usuario es aseguradora, de ser asi verificamos si por clase de aseg. necesita la notif.
     IF ls_utonotify-role = 4.
-      READ TABLE lt_usr_ins WITH KEY uname = ls_utonotify TRANSPORTING NO FIELDS.
+      READ TABLE lt_usr_ins WITH KEY uname = ls_utonotify-uname TRANSPORTING NO FIELDS.
       IF sy-subrc <> 0.
         "Saltamos al sig. registro al no estar en tabla clase aseguradora.
         CONTINUE.
