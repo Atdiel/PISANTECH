@@ -78,8 +78,8 @@ METHOD if_ex_ish_nv2000_pai~test .  " Inicio del método
   DATA: lv_text1 TYPE string,
         lv_text2 TYPE string.
 
-  DATA  lv_kzear TYPE char1.
-
+  DATA: lv_kzear TYPE char1,
+        lv_datum TYPE datum.
 
   DATA: lt_dynpfields TYPE TABLE OF dynpread,
         ls_dynpfield  TYPE dynpread.
@@ -113,68 +113,202 @@ METHOD if_ex_ish_nv2000_pai~test .  " Inicio del método
           wa_publiclist LIKE LINE OF st_publiclist.
     DATA lo_censo_ft_ws TYPE REF TO zclish_censo_ft.
     DATA: lv_partner TYPE nbup-partner,
+          lv_mov     TYPE xfeld,
+          wa_nbew1   TYPE nbew,
           lv_barnr   TYPE rnpa1-barnr.
+    DATA: ls_0197 TYPE zist0197,
+          ls_0201 TYPE zist0201.
 
     FREE lo_censo_ft_ws.
 
     IF ( i_vcode EQ 'UPD' OR i_vcode = 'INS' ) AND      " Repetir la verificación inicial de operación.
-         ( sy-ucomm = 'SAVE' OR sy-ucomm = 'FURT' ).       " Y de acción del usuario.
+         ( sy-ucomm = 'SAVE' OR sy-ucomm = 'FURT' OR sy-ucomm = 'PRIF' OR sy-ucomm = 'OPT1' ) AND       " Y de acción del usuario.
+         ( i_falnr IS NOT INITIAL ).
+      lv_datum = sy-datum - 1.
+      IF <rndbew>-bwidt GE lv_datum AND ( ( <rndbew>-falar = '1' AND <rndbew>-bewty = '3' ) OR
+        ( <rndbew>-falar = '1' AND <rndbew>-bewty = '1' ) OR
+        ( <rndbew>-falar = '1' AND <rndbew>-bwart = 'E' AND <rndbew>-bewty = '2' ) OR
+        ( <rndbew>-falar = '1' AND <rndbew>-bewty = '1' ) OR
+        ( <rndbew>-falar = '2' AND <rndfal>-enddt IS NOT INITIAL ) ).
 
-      IF ( <rndbew>-falar = '1' AND <rndbew>-bewty = '3' ) OR
-        ( <rndfal>-falar = '1' AND <rndbew>-bwart = 'E' AND <rndbew>-bewty = '2' ).
-
-        IF ( <rndbew>-falar = '1' AND <rndbew>-bewty = '3' ).
-          wa_publiclist-ambito = '3'.
-          ASSIGN ('(SAPLN00Z)RNPA1')  TO <rnpa1>.
-          IF sy-subrc = 0.
-            lv_barnr = <rnpa1>-barnr.
-          ENDIF.
-        ELSEIF ( <rndfal>-falar = '1' AND <rndbew>-bwart = 'E' AND <rndbew>-bewty = '2' ).
-          wa_publiclist-ambito = '2'.
-          SELECT SINGLE pernr INTO lv_barnr
-            FROM nfpz
+        IF ( <rndbew>-falar = '1' AND <rndbew>-bewty = '1' AND i_vcode EQ 'UPD' ).
+          SELECT SINGLE * FROM nbew
+            INTO CORRESPONDING FIELDS OF wa_nbew1
             WHERE einri = <rndbew>-einri
               AND falnr = <rndbew>-falnr
-              AND farzt = '6'
-              AND storn = ''.
+              AND lfdnr = <rndbew>-lfdnr.
+          IF sy-subrc = 0.
+            IF <rndbew>-bett NE wa_nbew1-bett.
+              lv_mov = 'X'.
+            ENDIF.
+          ENDIF.
+        ELSE.
+          CLEAR lv_mov.
+          IF <rndbew>-lfdnr IS NOT INITIAL.
+            SELECT SINGLE * FROM zist0201
+              INTO CORRESPONDING FIELDS OF ls_0201
+              WHERE einri = <rndbew>-einri
+                AND falnr = <rndbew>-falnr
+                AND lfdbew = <rndbew>-lfdnr.
+            IF sy-subrc NE 0.
+              lv_mov = 'X'.
+            ENDIF.
+          ELSE.
+            lv_mov = 'X'.
+          ENDIF.
         ENDIF.
 
-        IF lv_barnr IS NOT INITIAL.
-          ASSIGN ('(SAPLNBUPA_PNAM_SCR)RNDPNT')  TO <rndpnt>.
+        IF lv_mov = 'X'.
+          SELECT SINGLE * FROM zist0197
+            INTO CORRESPONDING FIELDS OF ls_0197
+            WHERE einri = <rndbew>-einri
+              AND orgfa = <rndbew>-orgfa.
           IF sy-subrc = 0.
-            wa_publiclist-falnr = <rndbew>-falnr.
-            wa_publiclist-patnr = i_patnr.
-            wa_publiclist-bett = <rndbew>-bett.
-            IF <rndbew>-falar = '1'.
+            IF ( <rndbew>-falar = '1' AND <rndbew>-bewty = '3' ) OR
+              ( <rndbew>-falar = '1' AND <rndbew>-bewty = '1' ).
+              wa_publiclist-kzae = '1'.
+              wa_publiclist-ambito = '3'.
               wa_publiclist-kzamb = 'H'.
-            ENDIF.
-*          wa_publiclist-kzamb = <rndbew>-falar.
-            wa_publiclist-nname = <rndpnt>-last_name_pat_long.
-            wa_publiclist-vname = <rndpnt>-frst_name_pat_long.
-            wa_publiclist-gbdat = <rndpnt>-birthdt.
-            wa_publiclist-orgfa = <rndbew>-orgfa.
-            wa_publiclist-gschl = <rndpnt>-sexid.
-            wa_publiclist-aufdt = <rndbew>-bwidt.
 
-            wa_publiclist-pernr = lv_barnr.
-            SELECT SINGLE partner FROM nbup
-              INTO lv_partner
-              WHERE gpart = lv_barnr.
-            IF sy-subrc = 0.
-              SELECT SINGLE name_first name_last
-                INTO (wa_publiclist-name1, wa_publiclist-name2)
-                FROM but000
-                WHERE partner = lv_partner.
-            ENDIF.
-            ASSIGN ('(SAPLN_DIAGNOSIS_SC)RNDIA')  TO <rndia>.
-            IF sy-subrc = 0.
-              wa_publiclist-dkey1 = <rndia>-dkey1.
+              ASSIGN ('(SAPLN00Z)RNPA1')  TO <rnpa1>.
+              IF sy-subrc = 0.
+                IF <rnpa1>-barnr IS NOT INITIAL.
+                  lv_barnr = <rnpa1>-barnr.
+                ELSE.
+                  ASSIGN ('(SAPMNPA10)RNPA1')  TO <rnpa1>.
+                  IF sy-subrc = 0.
+                    IF <rnpa1>-barnr IS NOT INITIAL.
+                      lv_barnr = <rnpa1>-barnr.
+                    ENDIF.
+                  ENDIF.
+                ENDIF.
+              ELSE.
+                ASSIGN ('(SAPMNPA10)RNPA1')  TO <rnpa1>.
+                IF sy-subrc = 0.
+                  IF <rnpa1>-barnr IS NOT INITIAL.
+                    lv_barnr = <rnpa1>-barnr.
+                  ENDIF.
+                ENDIF.
+              ENDIF.
+              IF lv_barnr IS INITIAL.
+                SELECT SINGLE pernr INTO lv_barnr
+                  FROM nfpz
+                  WHERE einri = <rndbew>-einri
+                    AND falnr = <rndbew>-falnr
+                    AND farzt = '6'
+                    AND storn = ''.
+              ENDIF.
+            ELSEIF ( <rndfal>-falar = '1' AND <rndbew>-bwart = 'E' AND <rndbew>-bewty = '2' ).
+              wa_publiclist-kzae = '1'.
+              wa_publiclist-ambito = '2'.
+              wa_publiclist-kzamb = 'H'.
+
+              SELECT SINGLE pernr INTO lv_barnr
+                FROM nfpz
+                WHERE einri = <rndbew>-einri
+                  AND falnr = <rndbew>-falnr
+                  AND farzt = '6'
+                  AND storn = ''.
+            ELSEIF ( <rndbew>-falar = '2' AND <rndfal>-enddt IS NOT INITIAL ).
+              IF ls_0197-zprog IS INITIAL.
+
+                wa_publiclist-kzae = '2'.
+                wa_publiclist-ambito = '2'.
+                wa_publiclist-kzamb = 'H'.
+
+                SELECT SINGLE pernr INTO lv_barnr
+                  FROM nfpz
+                  WHERE einri = <rndbew>-einri
+                    AND falnr = <rndbew>-falnr
+                    AND farzt = '6'
+                    AND storn = ''.
+              ELSE.
+                wa_publiclist-kzae = '3'.
+                wa_publiclist-ambito = '2'.
+                wa_publiclist-kzamb = 'A'.
+
+                SELECT SINGLE pernr INTO lv_barnr
+                  FROM nfpz
+                  WHERE einri = <rndbew>-einri
+                    AND falnr = <rndbew>-falnr
+                    AND farzt = '6'
+                    AND storn = ''.
+              ENDIF.
+*          ELSEIF ( <rndbew>-falar = '1' AND <rndbew>-bewty = '1' ).
+*            wa_publiclist-kzae = '1'.
+*            wa_publiclist-ambito = '3'.
+*            wa_publiclist-kzamb = 'H'.
+*
+*            ASSIGN ('(SAPLN00Z)RNPA1')  TO <rnpa1>.
+*            IF sy-subrc = 0.
+*              IF <rnpa1>-barnr IS NOT INITIAL.
+*                lv_barnr = <rnpa1>-barnr.
+*              ELSE.
+*                ASSIGN ('(SAPMNPA10)RNPA1')  TO <rnpa1>.
+*                IF sy-subrc = 0.
+*                  IF <rnpa1>-barnr IS NOT INITIAL.
+*                    lv_barnr = <rnpa1>-barnr.
+*                  ENDIF.
+*                ENDIF.
+*              ENDIF.
+*            ELSE.
+*              ASSIGN ('(SAPMNPA10)RNPA1')  TO <rnpa1>.
+*              IF sy-subrc = 0.
+*                IF <rnpa1>-barnr IS NOT INITIAL.
+*                  lv_barnr = <rnpa1>-barnr.
+*                ENDIF.
+*              ENDIF.
+*            ENDIF.
+*            IF lv_barnr IS INITIAL.
+*              SELECT SINGLE pernr INTO lv_barnr
+*                FROM nfpz
+*                WHERE einri = <rndbew>-einri
+*                  AND falnr = <rndbew>-falnr
+*                  AND farzt = '6'
+*                  AND storn = ''.
+*            ENDIF.
             ENDIF.
 
-            APPEND wa_publiclist TO st_publiclist.
+            IF lv_barnr IS NOT INITIAL.
+              ASSIGN ('(SAPLNBUPA_PNAM_SCR)RNDPNT')  TO <rndpnt>.
+              IF sy-subrc = 0.
+                wa_publiclist-einri = <rndbew>-einri.
+                wa_publiclist-falnr = <rndbew>-falnr.
+                wa_publiclist-patnr = i_patnr.
+                wa_publiclist-bett = <rndbew>-bett.
+*              IF <rndbew>-falar = '1'.
+*                wa_publiclist-kzamb = 'H'.
+*              ENDIF.
+**          wa_publiclist-kzamb = <rndbew>-falar.
+                wa_publiclist-nname = <rndpnt>-last_name_pat_long.
+                wa_publiclist-vname = <rndpnt>-frst_name_pat_long.
+                wa_publiclist-gbdat = <rndpnt>-birthdt.
+                wa_publiclist-orgfa = <rndbew>-orgfa.
+                wa_publiclist-gschl = <rndpnt>-sexid.
+                wa_publiclist-aufdt = <rndbew>-bwidt.
+                wa_publiclist-lfdbew = <rndbew>-lfdnr.
 
-            lo_censo_ft_ws = NEW #( ).
-            lo_censo_ft_ws->send_json( CORRESPONDING #( st_publiclist ) ).
+                wa_publiclist-pernr = lv_barnr.
+                SELECT SINGLE partner FROM nbup
+                  INTO lv_partner
+                  WHERE gpart = lv_barnr.
+                IF sy-subrc = 0.
+                  SELECT SINGLE name_first name_last
+                    INTO (wa_publiclist-name1, wa_publiclist-name2)
+                    FROM but000
+                    WHERE partner = lv_partner.
+                ENDIF.
+                ASSIGN ('(SAPLN_DIAGNOSIS_SC)RNDIA')  TO <rndia>.
+                IF sy-subrc = 0.
+                  wa_publiclist-dkey1 = <rndia>-dkey1.
+                ENDIF.
+
+                APPEND wa_publiclist TO st_publiclist.
+
+                lo_censo_ft_ws = NEW #( ).
+                lo_censo_ft_ws->send_json( CORRESPONDING #( st_publiclist ) ).
+              ENDIF.
+            ENDIF.
           ENDIF.
         ENDIF.
       ENDIF.
@@ -1201,6 +1335,12 @@ METHOD if_ex_ish_nv2000_pai~test .  " Inicio del método
                 IF ls_0045-statu NE '1'.  " Comprobar si el estado no es '1'.
                   MESSAGE e009(zasoc) WITH ls_0045-kunnr.  " Mostrar mensaje de error.
                 ELSE.
+                  IF ls_0045-tasoc = 'A'.
+                    IF ls_0045-vipoliz LT sy-datum.
+                      MESSAGE e015(zasoc).
+*   La póliza de seguro no está vigente para el tipo de convenio
+                    ENDIF.
+                  ENDIF.
                   IF <rndbew>-orgfa IS NOT INITIAL OR <rndbew>-orgpf IS NOT INITIAL.  " Verificar si alguna unidad organizacional está definida.
                     REFRESH: it_0050, it_0047, it_0062.  " Limpiar las tablas internas relacionadas.
                     SELECT * FROM zist0050  " Consultar la tabla zist0050.
@@ -1548,75 +1688,97 @@ METHOD if_ex_ish_nv2000_pai~test .  " Inicio del método
 * Transporte        : DEVK912053                                       *
 *----------------------------------------------------------------------*
 *** INICIO MODIF. - (App Movil) - 22/12/2025 - Erick Juarez Espinosa DEVBT02
-      DATA: lv_object    TYPE tnro-object,
-            lv_codigo    TYPE n LENGTH 10,
-            ls_zisht009  TYPE zisht009,
-            lv_direccion TYPE kna1-adrnr,
-            lv_but000    TYPE but000-partner,
-            lv_correo    TYPE string.
-
-      IF <rndfal>-enddt IS NOT INITIAL.
-
-        lv_object = 'ZISH_CODIGO'.
-        CALL FUNCTION 'NUMBER_GET_NEXT'
-          EXPORTING
-            nr_range_nr             = '01'
-            object                  = lv_object
-          IMPORTING
-            number                  = lv_codigo
-          EXCEPTIONS
-            interval_not_found      = 1
-            number_range_not_intern = 2
-            object_not_found        = 3
-            quantity_is_0           = 4
-            quantity_is_not_1       = 5
-            interval_overflow       = 6
-            buffer_overflow         = 7
-            OTHERS                  = 8.
-        IF sy-subrc <> 0.
-          MESSAGE 'Error al obtener el código de vinculación' TYPE 'E'.
-        ENDIF.
-
-        CLEAR: ls_zisht009, lv_but000, lv_direccion, lv_correo.
-        SELECT SINGLE partner
-          FROM npnt
-          INTO lv_but000
-          WHERE patnr = <rndbew>-patnr.
-        IF sy-subrc = 0.
-          SELECT SINGLE addrnumber
-            FROM but020
-            INTO lv_direccion
-            WHERE partner = lv_but000.
-          IF sy-subrc = 0.
-            SELECT SINGLE smtp_addr
-              FROM adr6
-              INTO lv_correo
-              WHERE addrnumber = lv_direccion.
-            CONDENSE lv_correo.
-          ENDIF.
-        ENDIF.
-        ls_zisht009-codigo  = lv_codigo.
-        ls_zisht009-patnr   = <rndbew>-patnr.
-        ls_zisht009-falnr   = <rndbew>-falnr.
-        ls_zisht009-email   = lv_correo.
-        ls_zisht009-fecha_c = sy-datum.
-        ls_zisht009-hora_c  = sy-uzeit.
-        ls_zisht009-fecha_x = sy-datum + 1.
-        ls_zisht009-hora_x  = sy-uzeit.
-        ls_zisht009-usuario = sy-uname.
-
-        INSERT zisht009 FROM ls_zisht009.
-        IF sy-subrc = 0.
-          CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
-            EXPORTING
-              titel        = 'Codigo de vinculacion'
-              textline1    = 'Su codigo de vinculacion es:'
-              textline2    = lv_codigo
-              start_column = 25
-              start_row    = 6.
-        ENDIF.
-
-      ENDIF.
+*      DATA: lv_object    TYPE tnro-object,
+*            lv_codigo    TYPE n LENGTH 10,
+*            ls_zisht009  TYPE zisht009,
+*            lv_direccion TYPE kna1-adrnr,
+*            lv_but000    TYPE but000-partner,
+*            lv_correo    TYPE string.
+*
+*      IF rc1 = '0' AND rc3 = '0'.
+*        IF <rndfal>-enddt IS NOT INITIAL.
+*
+*          SELECT SINGLE *
+*            FROM zisht009
+*            INTO CORRESPONDING FIELDS OF ls_zisht009
+*            WHERE falnr = <rndfal>-falnr
+*              AND patnr = <rndbew>-patnr.
+*
+*          IF ls_zisht009-codigo IS NOT INITIAL.
+*
+*            CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
+*              EXPORTING
+*                titel        = 'Codigo de vinculacion'
+*                textline1    = 'El episodio ya cuanta con'
+*                textline2    = 'un codigo de vinculacion'
+*                start_column = 25
+*                start_row    = 6.
+*
+*          ELSE.
+*
+*            lv_object = 'ZISH_CODIGO'.
+*            CALL FUNCTION 'NUMBER_GET_NEXT'
+*              EXPORTING
+*                nr_range_nr             = '01'
+*                object                  = lv_object
+*              IMPORTING
+*                number                  = lv_codigo
+*              EXCEPTIONS
+*                interval_not_found      = 1
+*                number_range_not_intern = 2
+*                object_not_found        = 3
+*                quantity_is_0           = 4
+*                quantity_is_not_1       = 5
+*                interval_overflow       = 6
+*                buffer_overflow         = 7
+*                OTHERS                  = 8.
+*            IF sy-subrc <> 0.
+*              MESSAGE 'Error al obtener el código de vinculación' TYPE 'E'.
+*            ENDIF.
+*
+*            CLEAR: ls_zisht009, lv_but000, lv_direccion, lv_correo.
+*            SELECT SINGLE partner
+*              FROM npnt
+*              INTO lv_but000
+*              WHERE patnr = <rndbew>-patnr.
+*            IF sy-subrc = 0.
+*              SELECT SINGLE addrnumber
+*                FROM but020
+*                INTO lv_direccion
+*                WHERE partner = lv_but000.
+*              IF sy-subrc = 0.
+*                SELECT SINGLE smtp_addr
+*                  FROM adr6
+*                  INTO lv_correo
+*                  WHERE addrnumber = lv_direccion.
+*                CONDENSE lv_correo.
+*              ENDIF.
+*            ENDIF.
+*            ls_zisht009-codigo  = lv_codigo.
+*            ls_zisht009-patnr   = <rndbew>-patnr.
+*            ls_zisht009-falnr   = <rndbew>-falnr.
+*            ls_zisht009-email   = lv_correo.
+*            ls_zisht009-fecha_c = sy-datum.
+*            ls_zisht009-hora_c  = sy-uzeit.
+*            ls_zisht009-fecha_x = sy-datum + 1.
+*            ls_zisht009-hora_x  = sy-uzeit.
+*            ls_zisht009-usuario = sy-uname.
+*
+*            INSERT zisht009 FROM ls_zisht009.
+*            IF sy-subrc = 0.
+*              CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
+*                EXPORTING
+*                  titel        = 'Codigo de vinculacion'
+*                  textline1    = 'Su codigo de vinculacion es:'
+*                  textline2    = lv_codigo
+*                  start_column = 25
+*                  start_row    = 6.
+*            ENDIF.
+*
+*          ENDIF.
+*
+*        ENDIF.
+*      ENDIF.
 *** FIN MODIF.    - (App Movil) - 22/12/2025 - Erick Juarez Espinosa DEVBT02
     ENDIF.
 
