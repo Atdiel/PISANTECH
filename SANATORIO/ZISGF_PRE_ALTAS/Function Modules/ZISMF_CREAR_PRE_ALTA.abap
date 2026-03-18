@@ -56,6 +56,8 @@ FUNCTION zismf_crear_pre_alta.
       INTO @DATA(ls_reserva)
       WHERE
         rsnum = @ls_folio-rsnum AND
+*** MODIF. - 3565 - 25/02/2026 - DEVBT02 Ramón Quintana
+        xloek = @abap_false AND
         kzear = @abap_false.
 
     IF sy-subrc = 0.
