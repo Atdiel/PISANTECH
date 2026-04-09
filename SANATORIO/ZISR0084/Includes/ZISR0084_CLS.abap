@@ -192,14 +192,14 @@ CLASS lcl_pre_management IMPLEMENTATION.
   METHOD create_fieldcat.
 
     ct_fieldcat = VALUE #(
-            ( fieldname = 'STATUS' reptext = 'status' icon = abap_true )
+            ( fieldname = 'STATUS' reptext = 'Status' icon = abap_true )
             ( fieldname = 'EINRI' reptext = 'CeSa' just = 'R' )
             ( fieldname = 'FALNR' reptext = 'Episodio' no_zero = abap_true just = 'R' )
             ( fieldname = 'PATNR' reptext = 'Paciente' no_zero = abap_true just = 'R' )
             ( fieldname = 'ZIMMR' reptext = 'Habitación' just = 'R' )
             ( fieldname = 'FULL_NAME' reptext = 'Nombre Completo' outputlen = 40 just = 'R' )
-            ( fieldname = 'PRE_DATE' reptext = 'Fecha Pre-Alta' just = 'R' outputlen = 12 )
-            ( fieldname = 'PRE_HOUR' reptext = 'Hora Pre-Alta' just = 'R' outputlen = 12 )
+            ( fieldname = 'PRE_DATE' reptext = 'Fecha Check-List' just = 'R' outputlen = 12 )
+            ( fieldname = 'PRE_HOUR' reptext = 'Hora Check-List' just = 'R' outputlen = 12 )
             ).
 
     IF sy-tcode = 'ZISH195'.
@@ -364,8 +364,11 @@ CLASS lcl_are_management IMPLEMENTATION.
   METHOD handle_validation.
 
     DATA: ls_area_updated TYPE zist0187,
-          lv_answer(1)    TYPE c.
-    CLEAR:  ls_area_updated.
+          lv_answer(1)    TYPE c,
+*** INICIO MODIF. - 3565 - 05/03/2026 - Ramón Quintana DEVBT02
+          lv_reserv_pend(1) TYPE c.
+    CLEAR:  ls_area_updated, lv_reserv_pend.
+*** FIN MODIF.    - 3565 - 05/03/2026 - Ramón Quintana DEVBT02
 
 *    buscamos linea en alv con parametro OPTIONAL para evitar error en caso de no existir linea
     ls_area_updated = CORRESPONDING #( VALUE #( gt_are_output[ es_row_no-row_id ] OPTIONAL ) ).
@@ -373,6 +376,20 @@ CLASS lcl_are_management IMPLEMENTATION.
       MESSAGE ID 'MPA' TYPE 'S' NUMBER '002' WITH text-002 DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
+
+*** INICIO MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+    "Inicia validacion de cargos pendientes en NMATP
+    CALL FUNCTION 'ZISMF_RESERVA_PEND_AREAS'
+      EXPORTING
+        iv_einri           =    ls_area_updated-einri " IS-H: Centro sanitario
+        iv_falnr           =    ls_area_updated-falnr " IS-H: Número de episodio
+        iv_umedica         =    ls_area_updated-area " IS-H: Unidad org.médica que solicita la prestación
+      IMPORTING
+        ev_has_reserv_pend =    lv_reserv_pend. " Valores booleanos TRUE (= 'X') y FALSE (= ' ')
+    IF lv_reserv_pend = abap_true.
+      RETURN.
+    ENDIF.
+*** FIN MODIF.    - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
 
     CALL FUNCTION 'POPUP_TO_CONFIRM_STEP'
       EXPORTING

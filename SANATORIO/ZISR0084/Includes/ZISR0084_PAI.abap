@@ -52,7 +52,8 @@ MODULE user_command_0666 INPUT.
       CALL FUNCTION 'POPUP_CONTINUE_YES_NO'
         EXPORTING
           textline1 = 'Desea eliminar el(los) registro(s) ?'
-          titel     = 'Eliminación de Pre-Altas'
+*** MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+          titel     = 'Eliminación de Check-List'
         IMPORTING
           answer    = lv_answer.
       "Usuario say yes

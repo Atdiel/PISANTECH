@@ -4,6 +4,7 @@ FUNCTION zismf_validar_areas.
 *"  IMPORTING
 *"     REFERENCE(IV_EINRI) TYPE  EINRI
 *"     REFERENCE(IV_FALNR) TYPE  FALNR
+*"     REFERENCE(IV_UMEDICA) TYPE  NZUWFA
 *"  EXPORTING
 *"     REFERENCE(EV_NEED_PRE_ALTA) TYPE  ABAP_BOOL
 *"  EXCEPTIONS
@@ -32,38 +33,21 @@ FUNCTION zismf_validar_areas.
     SELECT * FROM zist0190
       INTO TABLE @DATA(lt_areas)
       WHERE
+*** MODIF. - 3565 - 06/03/2026 - DEVBT02 Ramón Quintana
+        area      = @iv_umedica AND
         clase_epi = @lv_clase_epi.
     IF sy-subrc <> 0.
+*** MODIF. - 3565 - 06/03/2026 - DEVBT02 Ramón Quintana
+      "No es necesaria pre-alta
       ev_need_pre_alta = abap_false.
+*** INICIO MODIF. - 3565 - 06/03/2026 - DEVBT02 Ramón Quintana
+      EXIT.
+    ELSE.
+      "levantar flag para pedir pre-alta
+      ev_need_pre_alta = abap_true.
+      EXIT.
     ENDIF.
-
-    "Validar todas las areas por las que paso el epi
-    SELECT * FROM nbew
-      INTO TABLE @DATA(lt_movements)
-      WHERE
-        einri     = @iv_einri AND
-        falnr     = @iv_falnr.
-    IF sy-subrc <> 0.
-      "En caso de no haber movimientos en el epi.
-    ENDIF.
-
-    "Verificar que algun area por la que paso no este en la tabla de pre-altas
-    LOOP AT lt_movements INTO DATA(ls_movements).
-      READ TABLE lt_areas WITH KEY area = ls_movements-orgfa TRANSPORTING NO FIELDS.
-      IF sy-subrc = 0.
-        "levantar flag para pedir pre-alta
-        ev_need_pre_alta = abap_true.
-        EXIT.
-      ELSE.
-        READ TABLE lt_areas WITH KEY area = ls_movements-orgpf TRANSPORTING NO FIELDS.
-        IF sy-subrc = 0.
-          "levantar flag para pedir pre-alta
-          ev_need_pre_alta = abap_true.
-          EXIT.
-        ENDIF.
-      ENDIF.
-
-    ENDLOOP.
+*** FIN MODIF.    - 3565 - 06/03/2026 - DEVBT02 Ramón Quintana
 
   ELSE.
     RAISE falnr_not_found.

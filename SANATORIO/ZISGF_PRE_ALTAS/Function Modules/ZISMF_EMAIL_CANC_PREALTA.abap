@@ -92,9 +92,11 @@ FUNCTION zismf_email_canc_prealta.
     TRY.
         lo_send_request = cl_bcs=>create_persistent( ).
 
-        mailsubject = 'Cancelación de prealta'.
+*** MODIF. - 3565 - 06/03/2026 - DEVBT02 Ramón Quintana
+        mailsubject = 'Cancelación de check-list'.
         mailtext = VALUE #( ( |Por medio de este correo| )
-                            ( |Se le notifica que la prealta para el episodio { lv_episodio }| )
+*** MODIF. - 3565 - 06/03/2026 - DEVBT02 Ramón Quintana
+                            ( |Se le notifica que la check-list para el episodio { lv_episodio }| )
                             ( |del paciente { lv_pat_name }| )
                             ( |en la cama { lv_room }| )
                             ( |en la unidad médica { lv_area } con el rol de { lv_role }| )
@@ -129,9 +131,11 @@ FUNCTION zismf_email_canc_prealta.
   ENDLOOP.
 
   IF lv_sent_to_all = abap_true.
-    MESSAGE ID 'PRE-ALTA' TYPE 'S' NUMBER '001' WITH text-014.
+*** MODIF. - 3565 - 06/03/2026 - DEVBT02 Ramón Quintana
+    MESSAGE ID 'C-LIST' TYPE 'S' NUMBER '001' WITH text-014.
   ELSE.
-    MESSAGE ID 'PRE-ALTA' TYPE 'S' NUMBER '002' WITH text-015 DISPLAY LIKE 'E'.
+*** MODIF. - 3565 - 06/03/2026 - DEVBT02 Ramón Quintana
+    MESSAGE ID 'C-LIST' TYPE 'S' NUMBER '002' WITH text-015 DISPLAY LIKE 'E'.
   ENDIF.
 
   COMMIT WORK.

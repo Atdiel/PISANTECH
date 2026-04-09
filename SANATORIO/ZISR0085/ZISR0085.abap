@@ -65,9 +65,11 @@ SELECT SINGLE epi~patnr, epi~falar, but~name_first, but~name_last
 CALL FUNCTION 'POPUP_TO_CONFIRM_STEP'
   EXPORTING
     defaultoption  = 'Y'
-    textline1      = '¿Generar Pre-Alta para Paciente?'
+*** MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+    textline1      = '¿Generar Check-List para Paciente?'
     textline2      = |{ lv_room }, { lv_pat_name }|
-    titel          = 'CONFIRMACIÓN PRE-ALTA'
+*** MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+    titel          = 'CONFIRMACIÓN CHECK-LIST'
     cancel_display = 'X'
   IMPORTING
     answer         = lv_answer.
@@ -87,8 +89,10 @@ IF lv_answer = 'J'.
   IF sy-subrc = 0.
     CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT_LO'
       EXPORTING
-        titel     = 'PRE ALTA'
-        textline1 = 'Se ha generado la solicitud de Pre Alta'
+*** INICIO MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+        titel     = 'CHECK-LIST'
+        textline1 = 'Se ha generado la solicitud de Check-List'
+*** FIN MODIF.    - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
         textline2 = 'a las áreas hospitalarias del episodio'.
   ENDIF.
 ENDIF.

@@ -14,7 +14,9 @@ FORM f_datos_pre_alta .
     SELECT * FROM zist0186
       INTO TABLE gt_pre_output
       WHERE
-        pre_date    IN s_datum.
+        pre_date    IN s_datum AND
+*** MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+        uname       IN s_user.
 
     LOOP AT gt_pre_output REFERENCE INTO DATA(lo_pre_out).
       IF lo_pre_out->deleted = abap_true.
@@ -53,12 +55,14 @@ FORM f_datos_area .
       ON a~id = b~id "Solo enlazarlos por su ID
       INTO TABLE @gt_are_all
       WHERE
-        a~pre_date    IN @s_datum.
+        a~pre_date    IN @s_datum AND
+*** MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+        a~uname       IN @s_user.
     "Modificara para el alv el icono de status de area
     LOOP AT gt_are_all REFERENCE INTO DATA(lo_are_all).
       "Validar si esta area para este episodio ya se agrupo
-      IF lo_are_all->einri = ls_are_all-einri AND
-         lo_are_all->falnr = ls_are_all-falnr AND
+*** MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+      IF lo_are_all->id   = ls_are_all-id AND
          lo_are_all->area  = ls_are_all-area.
         lo_are_all->einri = space.
         CONTINUE.
@@ -72,8 +76,8 @@ FORM f_datos_area .
       lv_verif = abap_true.
       "Agrupar por areas de episodio
       LOOP AT gt_are_all INTO ls_are_all
-                         WHERE einri = lo_are_all->einri AND
-                               falnr = lo_are_all->falnr AND
+*** MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+                         WHERE id = lo_are_all->id AND
                                area  = lo_are_all->area.
 
         "Segun el role, colocamos la hora en su debido campo (para monitor)

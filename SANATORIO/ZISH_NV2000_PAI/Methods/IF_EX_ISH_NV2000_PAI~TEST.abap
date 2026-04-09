@@ -757,6 +757,7 @@ METHOD if_ex_ish_nv2000_pai~test .  " Inicio del método
           EXPORTING
             iv_einri         = <rndbew>-einri    " IS-H: Centro sanitario
             iv_falnr         = <rndbew>-falnr    " IS-H: N�mero de episodio
+            iv_umedica       = <rndbew>-orgfa
           IMPORTING
             ev_need_pre_alta = lv_need_pre
           EXCEPTIONS
@@ -765,47 +766,61 @@ METHOD if_ex_ish_nv2000_pai~test .  " Inicio del método
         IF sy-subrc <> 0.
 *         MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
 *                    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
-*        ENDIF.
+        ENDIF.
 
-          "Solicitar pre-alta validar
-          IF lv_need_pre = abap_true.
-            "Validar si su usuario tiene permisos para pre-altas
-            SELECT SINGLE * FROM zist0188
-              INTO @DATA(ls_zist0188)
-              WHERE
-                area      = @<rndbew>-orgfa OR
-                area      = @<rndbew>-orgpf AND
-                uname     = @sy-uname.
+        "Si no funciono con orgfa probar con orgpf
+        IF lv_need_pre = abap_false.
+          CALL FUNCTION 'ZISMF_VALIDAR_AREAS'
+            EXPORTING
+              iv_einri         = <rndbew>-einri    " IS-H: Centro sanitario
+              iv_falnr         = <rndbew>-falnr    " IS-H: N�mero de episodio
+              iv_umedica       = <rndbew>-orgpf
+            IMPORTING
+              ev_need_pre_alta = lv_need_pre
+            EXCEPTIONS
+              falnr_not_found  = 1
+              OTHERS           = 2.
+        ENDIF.
 
-            IF sy-subrc <> 0.
-              MESSAGE ID 'PRE-ALTA' TYPE 'S' NUMBER '003' WITH text-003 DISPLAY LIKE 'E'.
-              LEAVE PROGRAM.
-            ENDIF.
-            "Validar si ya tiene una pre-alta y que este liberada si/no - continua proceso normal/salir del programa(evitar que guarde)
-            SELECT SINGLE * FROM zist0186
-              INTO @DATA(ls_zist0186)
-              WHERE
-                einri   = @<rndbew>-einri AND
-                falnr   = @<rndbew>-falnr AND
-                deleted = @abap_false.
-            "Si no esta una pre alta, debe generarla
-            IF sy-subrc <> 0.
-              MESSAGE ID 'PRE-ALTA' TYPE 'S' NUMBER '001' WITH text-001 DISPLAY LIKE 'E'.
-              LEAVE PROGRAM.
-            ENDIF.
-            "Si aun no esta liberada, no puede dar fin al episodio
-            IF ls_zist0186-status <> icon_green_light.
-              MESSAGE ID 'PRE-ALTA' TYPE 'S' NUMBER '002' WITH text-002 DISPLAY LIKE 'E'.
-              LEAVE PROGRAM.
-            ELSE.
-              "Actualizar la hora de alta de la pre alta
-              ls_zist0186-alta_date = sy-datum.
-              ls_zist0186-alta_hour = sy-uzeit.
-              ls_zist0186-diff_hour = ls_zist0186-alta_hour - ls_zist0186-pre_hour.
-              UPDATE zist0186 FROM ls_zist0186.
-            ENDIF.
+        "Solo entrara aqui si en la tabla zist0190 esta la um como necesaria para pre-altas
+        IF lv_need_pre = abap_true.
+          "Validar si su usuario tiene permisos para pre-altas
+          SELECT SINGLE * FROM zist0188
+            INTO @DATA(ls_zist0188)
+            WHERE
+              area      = @<rndbew>-orgfa OR
+              area      = @<rndbew>-orgpf AND
+              uname     = @sy-uname.
 
+          IF sy-subrc <> 0.
+            MESSAGE ID 'PRE-ALTA' TYPE 'S' NUMBER '003' WITH text-003 DISPLAY LIKE 'E'.
+            LEAVE PROGRAM.
           ENDIF.
+          "Validar si ya tiene una pre-alta y que este liberada si/no - continua proceso normal/salir del programa(evitar que guarde)
+          SELECT SINGLE * FROM zist0186
+            INTO @DATA(ls_zist0186)
+            WHERE
+              einri   = @<rndbew>-einri AND
+              falnr   = @<rndbew>-falnr AND
+              deleted = @abap_false.
+          "Si no esta una pre alta, debe generarla
+          IF sy-subrc <> 0.
+            MESSAGE ID 'PRE-ALTA' TYPE 'S' NUMBER '001' WITH text-001 DISPLAY LIKE 'E'.
+            LEAVE PROGRAM.
+          ENDIF.
+          "Si aun no esta liberada, no puede dar fin al episodio
+          IF ls_zist0186-status <> icon_green_light.
+            MESSAGE ID 'PRE-ALTA' TYPE 'S' NUMBER '002' WITH text-002 DISPLAY LIKE 'E'.
+            LEAVE PROGRAM.
+          ELSE.
+            "Actualizar la hora de alta de la pre alta
+            ls_zist0186-alta_date = sy-datum.
+            ls_zist0186-alta_hour = sy-uzeit.
+            ls_zist0186-diff_hour = ls_zist0186-alta_hour - ls_zist0186-pre_hour.
+            UPDATE zist0186 FROM ls_zist0186.
+          ENDIF.
+
+*        ENDIF.
         ENDIF.
       ENDIF.
 ** FIN MODIF.    - 3271 (Monitor Pre-Altas) - 29/07/2025 - DEVBT02 Ram�n Atdiel P�rez Quintana

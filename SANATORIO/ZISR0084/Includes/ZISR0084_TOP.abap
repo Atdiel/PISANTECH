@@ -66,7 +66,10 @@ DATA: go_pre_contain TYPE REF TO cl_gui_custom_container,
 **********************************************************************
 SELECTION-SCREEN BEGIN OF BLOCK admin
     WITH FRAME TITLE text-004.
-SELECT-OPTIONS: s_datum FOR sy-datum OBLIGATORY.
+*** INICIO MODIF. - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
+SELECT-OPTIONS: s_datum FOR sy-datum,
+                s_user  FOR sy-uname.
+*** FIN MODIF.    - 3565 - 03/03/2026 - Ramón Quintana DEVBT02
 SELECTION-SCREEN END OF BLOCK admin.
 
 **********************************************************************
