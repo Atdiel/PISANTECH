@@ -898,7 +898,8 @@ FORM get_desc_material .
     wa_nuevas_alv-netwr  = wa_nuevas_alv-brtwr.
     LOOP AT it_prcd INTO wa_prcd WHERE knumv = compra-ekko-knumv
                                    AND kposn = compra-ekpo-ebelp
-                                   AND kschl <> 'PBXX'.
+                                   AND kschl <> 'PBXX'
+                                   AND kschl <> 'PB00'.
 *** INICIO MODIF. - 761 - 26/11/2025 - PTECHABAP01
       wa_nuevas_alv-netwr  = wa_nuevas_alv-netwr + wa_prcd-kwert. "valor neto
       wa_nuevas_alv-brtwr1 = wa_nuevas_alv-brtwr1 + wa_prcd-kwert.
