@@ -136,7 +136,8 @@ FORM get_sales_documents USING sales_docs TYPE sales_documents.
       FOR ALL ENTRIES IN documentos_de_compra
       WHERE knumv = documentos_de_compra-ekko-knumv
         AND ( kschl = 'R001' OR kschl = 'R002' OR
-              kschl = 'R003' OR kschl = 'PBXX' ).
+              kschl = 'R003' OR kschl = 'PBXX' OR
+              kschl = 'PB00' ).
 
 *** INICIO MODIF. - 761 - 25/11/2025 - PTECHABAP01
 
@@ -572,7 +573,11 @@ FORM get_fechas.
     PERFORM get_desc_conpag.
     PERFORM get_val_day_status.
 * porcentaje
-    wa_nuevas_alv-porct = ( ( wa_nuevas_alv-brtwr1 * 100 ) / wa_nuevas_alv-brtwr ) * -1 .
+*** MODIF. - s/ticket - 25/02/2026 - Ramón Quintana
+    IF wa_nuevas_alv-brtwr > 0.
+      wa_nuevas_alv-porct = ( ( wa_nuevas_alv-brtwr1 * 100 ) / wa_nuevas_alv-brtwr ) * -1 .
+*** MODIF. - s/ticket - 25/02/2026 - Ramón Quintana
+    ENDIF.
 
     PERFORM get_fechas_h.
 
@@ -875,9 +880,18 @@ FORM get_desc_material .
     READ TABLE it_prcd INTO wa_prcd WITH KEY knumv = compra-ekko-knumv
                                              kposn = compra-ekpo-ebelp
                                              kschl = 'PBXX'.
-    IF sy-subrc = 0.
+*** INICIO MODIF. - s/ticket - 25/02/2026 - Ramón Quintana
+    IF sy-subrc <> 0.
+      READ TABLE it_prcd INTO wa_prcd WITH KEY knumv = compra-ekko-knumv
+                                             kposn = compra-ekpo-ebelp
+                                             kschl = 'PB00'.
+      IF sy-subrc = 0.
+        wa_nuevas_alv-brtwr  = wa_prcd-kwert.  "valor bruto
+      ENDIF.
+    ELSE.
       wa_nuevas_alv-brtwr  = wa_prcd-kwert.  "valor bruto
     ENDIF.
+*** FIN MODIF.    - s/ticket - 25/02/2026 - Ramón Quintana
 
     CLEAR wa_prcd.
 *** MODIF. - 761 - 26/11/2025 - PTECHABAP01
