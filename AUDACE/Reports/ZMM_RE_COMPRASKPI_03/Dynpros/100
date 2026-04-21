@@ -8,7 +8,7 @@ ZMM_RE_COMPRASKPI_03
 756																																
              40																																
 %_HEADER																																
-ZMM_RE_COMPRASKPI_03                    0100 0100    200250192 37  0  0200255  0G S                              20240723174114																																
+ZMM_RE_COMPRASKPI_03                    0100 0100    200250192 37  0  0200255  0G S                              20251118183426																																
 %_DESCRIPTION																																
 Compras KPI																																
 %_FIELDS																																
@@ -21,5 +21,7 @@ PROCESS BEFORE OUTPUT.
 																																
 PROCESS AFTER INPUT.																																
   MODULE cancel_report AT EXIT-COMMAND.																																
+																																
+  MODULE user_ucomm.																																
 %_PARAMS																																
 																																

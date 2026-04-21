@@ -16,3 +16,17 @@ MODULE cancel_report INPUT.
 
   LEAVE TO SCREEN 0.
 ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_UCOMM  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_ucomm INPUT.
+
+  REFRESH: it_data.
+  CASE sy-ucomm.
+    WHEN 'REFRESH'.
+      PERFORM read_report_records.
+  ENDCASE.
+
+ENDMODULE.
